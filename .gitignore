@@ -1,0 +1,13 @@
+.env
+.venv
+venv
+__pycache__
+.ruff_cache
+
+_staging/
+dev.duckdb
+dev.duckdb.wal
+
+# Saída local da gold e dos parquets consolidados: o dado mora no Hugging
+# Face, não no git (o maior passa de 100 MB, limite rígido do GitHub).
+publicacao/

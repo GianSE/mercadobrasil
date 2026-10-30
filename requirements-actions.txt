@@ -1,0 +1,23 @@
+# Dependências do CI (GitHub Actions): só o que os workflows em
+# .github/workflows/*.yml realmente importam. Deliberadamente SEM:
+#   - openpyxl/xlrd/lxml (extração de planilha de dicionário via
+#                      `python dicionario.py --modo extrair` só roda
+#                      localmente; o checador do CI, dicionario.yml,
+#                      só lista o FTP com --modo verificar)
+#   - nada do site de dashboards: ele é Node (dashboards/package.json) e é
+#     construído pelo próprio Cloudflare Pages, não pelo Actions
+# Os modelos (pandas, scikit-learn, statsmodels, prophet, que trazem
+# numpy, scipy, matplotlib e cmdstanpy) ficam em requirements-modelos.txt:
+# só as duas etapas da Gold que os usam instalam, e uma atualização deles
+# não pode quebrar a Bronze nem a Silver. Fora delas o pipeline é SQL no
+# DuckDB, sem DataFrame: nenhum script que roda com este arquivo usa
+# pandas, nem pelo `.df()` do DuckDB.
+# Ver requirements-pipeline.txt pro conjunto completo (máquina local).
+
+duckdb==1.5.6
+pyarrow==25.0.1
+python-dotenv==1.2.4
+huggingface_hub==2.2.0
+
+# --- extração do FTP do MTE (bronze-caged.yml / bronze-rais.yml) ---
+py7zr==1.1.3

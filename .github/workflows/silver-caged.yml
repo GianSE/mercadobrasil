@@ -1,0 +1,89 @@
+name: Silver CAGED por área
+
+# A silver da área escolhida, em Gianpedro/silver-caged-<área>: recorte da
+# silver completa (Gianpedro/silver-caged, já traduzida), sem ler a bronze
+# (silver-area.py). Depende da silver-caged-completa.yml estar em dia.
+
+on:
+  workflow_dispatch:
+    inputs:
+      area:
+        description: "Área do recorte"
+        type: choice
+        options: [tec, saude, educacao]
+        required: true
+      ano_inicio:
+        description: "Ano inicial (vazio = 2007, início do recorte)"
+      ano_fim:
+        description: "Ano final (vazio = ano atual)"
+      forcar:
+        description: "Refazer os anos do intervalo mesmo que já estejam na silver da área"
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      area:
+        type: string
+        required: true
+      ano_inicio:
+        type: string
+      ano_fim:
+        type: string
+      forcar:
+        type: boolean
+        default: false
+
+env:
+  AREA: ${{ inputs.area }}
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  PYTHONUNBUFFERED: "1"
+  HF_HUB_DISABLE_PROGRESS_BARS: "1"
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    outputs:
+      tem_novidade: ${{ steps.chk.outputs.tem_novidade }}
+      anos: ${{ steps.chk.outputs.anos }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-*.txt
+      - run: pip install -r requirements-actions.txt
+
+      - id: chk
+        working-directory: tasks-python/2-silver
+        run: |
+          ANO_INICIO="${{ inputs.ano_inicio }}"
+          ANO_FIM="${{ inputs.ano_fim }}"
+          python silver-area.py --base caged --modo verificar --ano-inicio "${ANO_INICIO:-2007}" --ano-fim "${ANO_FIM:-9999}" ${{ inputs.forcar && '--forcar' || '' }}
+
+  processar:
+    needs: verificar
+    if: needs.verificar.outputs.tem_novidade == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        item: ${{ fromJson(needs.verificar.outputs.anos) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-*.txt
+      - run: pip install -r requirements-actions.txt
+
+      - name: Recorta ${{ inputs.area }} de ${{ matrix.item.tabela }} ${{ matrix.item.ano }}
+        working-directory: tasks-python/2-silver
+        run: |
+          python silver-area.py --base caged --modo processar --tabela ${{ matrix.item.tabela }} \
+            --ano-inicio ${{ matrix.item.ano }} --ano-fim ${{ matrix.item.ano }}

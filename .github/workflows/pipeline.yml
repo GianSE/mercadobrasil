@@ -1,0 +1,157 @@
+name: Pipeline por área (orquestrador)
+
+# A fila inteira para a área escolhida (tec, saúde, educação). Só manual:
+# a área é escolhida ao iniciar.
+#
+#   bronze-caged ┐
+#   bronze-rais  ┼─ paralelo, comum a todas as áreas
+#   dicionario   ┘
+#        │
+#   silver-caged-completa ┐  a base inteira traduzida, de onde toda área
+#   silver-rais-completa  ┘  recorta
+#        │
+#        ├─ silver-caged  (recorte da área na silver-caged completa)
+#        └─ silver-rais   (recorte da área na silver-rais completa)
+#                │
+#                ├─ gold-rais
+#                ├─ gold-territorio
+#                ├─ gold-caged-consolidado
+#                └─ gold-modelos  (espera gold-rais: o nowcast lê o estoque)
+#
+# Tudo publica nos repositórios da área (silver-caged-<área>, gold-analise-mercado-<área>).
+# A bronze e a silver completa são as mesmas do repositório mercadotech, que
+# as atualiza toda segunda: não rode as duas filas a partir da bronze ao
+# mesmo tempo. "comecar_em" pula camadas que já estão em dia; cada workflow
+# também roda solto, com o mesmo input de área.
+#
+# O site (dashboards/) não é publicado daqui: não há deploy na Cloudflare.
+
+on:
+  workflow_dispatch:
+    inputs:
+      area:
+        description: "Área do recorte"
+        type: choice
+        options: [tec, saude, educacao]
+        required: true
+      comecar_em:
+        description: "A partir de qual camada rodar"
+        type: choice
+        options: [bronze, completa, silver, gold]
+        default: silver
+      ano_inicio:
+        description: "Ano inicial para bronze/silver (vazio = padrão de cada etapa)"
+      ano_fim:
+        description: "Ano final para bronze/silver (vazio = ano atual)"
+
+jobs:
+  decidir:
+    runs-on: ubuntu-latest
+    outputs:
+      bronze: ${{ steps.calc.outputs.bronze }}
+      completa: ${{ steps.calc.outputs.completa }}
+      silver: ${{ steps.calc.outputs.silver }}
+      gold: ${{ steps.calc.outputs.gold }}
+    steps:
+      - id: calc
+        run: |
+          COMECAR="${{ inputs.comecar_em }}"
+          echo "Área: ${{ inputs.area }} | começando em: $COMECAR"
+          ligar() { for camada in bronze completa silver gold; do
+                      [ "$camada" = "$1" ] && ativo=true
+                      echo "$camada=${ativo:-false}" >> "$GITHUB_OUTPUT"; done; }
+          ligar "$COMECAR"
+
+  bronze-caged:
+    needs: decidir
+    if: needs.decidir.outputs.bronze == 'true'
+    uses: ./.github/workflows/bronze-caged.yml
+    with:
+      ano_inicio: ${{ inputs.ano_inicio }}
+      ano_fim: ${{ inputs.ano_fim }}
+    secrets: inherit
+
+  bronze-rais:
+    needs: decidir
+    if: needs.decidir.outputs.bronze == 'true'
+    uses: ./.github/workflows/bronze-rais.yml
+    with:
+      ano_inicio: ${{ inputs.ano_inicio }}
+      ano_fim: ${{ inputs.ano_fim }}
+    secrets: inherit
+
+  dicionario:
+    needs: decidir
+    if: needs.decidir.outputs.bronze == 'true'
+    uses: ./.github/workflows/dicionario.yml
+    secrets: inherit
+
+  silver-caged-completa:
+    needs: [decidir, bronze-caged, dicionario]
+    if: needs.decidir.outputs.completa == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/silver-caged-completa.yml
+    with:
+      ano_inicio: ${{ inputs.ano_inicio }}
+      ano_fim: ${{ inputs.ano_fim }}
+    secrets: inherit
+
+  silver-rais-completa:
+    needs: [decidir, bronze-rais, dicionario]
+    if: needs.decidir.outputs.completa == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/silver-rais-completa.yml
+    with:
+      ano_inicio: ${{ inputs.ano_inicio }}
+      ano_fim: ${{ inputs.ano_fim }}
+    secrets: inherit
+
+  silver-caged:
+    needs: [decidir, bronze-caged, dicionario, silver-caged-completa]
+    if: needs.decidir.outputs.silver == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/silver-caged.yml
+    with:
+      area: ${{ inputs.area }}
+      ano_inicio: ${{ inputs.ano_inicio }}
+      ano_fim: ${{ inputs.ano_fim }}
+    secrets: inherit
+
+  silver-rais:
+    needs: [decidir, bronze-rais, dicionario, silver-rais-completa]
+    if: needs.decidir.outputs.silver == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/silver-rais.yml
+    with:
+      area: ${{ inputs.area }}
+      ano_inicio: ${{ inputs.ano_inicio }}
+      ano_fim: ${{ inputs.ano_fim }}
+    secrets: inherit
+
+  gold-rais:
+    needs: [decidir, silver-rais]
+    if: needs.decidir.outputs.gold == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/gold-rais.yml
+    with:
+      area: ${{ inputs.area }}
+    secrets: inherit
+
+  gold-territorio:
+    needs: [decidir, silver-caged, silver-rais]
+    if: needs.decidir.outputs.gold == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/gold-territorio.yml
+    with:
+      area: ${{ inputs.area }}
+    secrets: inherit
+
+  gold-caged-consolidado:
+    needs: [decidir, silver-caged]
+    if: needs.decidir.outputs.gold == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/gold-caged-consolidado.yml
+    with:
+      area: ${{ inputs.area }}
+    secrets: inherit
+
+  gold-modelos:
+    needs: [decidir, silver-caged, silver-rais, gold-rais]
+    if: needs.decidir.outputs.gold == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/gold-modelos.yml
+    with:
+      area: ${{ inputs.area }}
+    secrets: inherit
