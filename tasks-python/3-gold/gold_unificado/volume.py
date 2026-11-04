@@ -22,7 +22,7 @@ from _utils import escopo_tecnologia as esc, nuvem
 
 ANO_INICIAL = 2007
 # Na Silver do CAGED o repositório guarda também o espelho consolidado da
-# Gold (caged_ti_<ano> na raiz): só as pastas das tabelas tratadas contam.
+# Gold (caged_unificado_<ano> na raiz): só as pastas das tabelas tratadas contam.
 TABELAS_SILVER = ("caged_mov/", "caged_old/", "caged_for/", "caged_exc/", "caged_ajustes/", "rais_vinc/", "rais_estab/")
 
 CAMADAS = [

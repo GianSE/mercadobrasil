@@ -65,7 +65,7 @@ def _publicar_cubos() -> int:
     from gold_unificado.publicar_gold import _credencial
 
     try:
-        nomes = cubos.montar(duckdb.connect(), (cubos.DIR_ENTRADA / "caged_ti_*.parquet").as_posix(), cubos.DIR_SAIDA)
+        nomes = cubos.montar(duckdb.connect(), (cubos.DIR_ENTRADA / "caged_unificado_*.parquet").as_posix(), cubos.DIR_SAIDA)
     except Exception as e:
         print(f"❌ cubos falharam: {str(e)[:200]}")
         return 1

@@ -138,7 +138,7 @@ def unificar_ano(con, ano: int) -> bool:
     # criado o diretório — main() fazia isso, mas gold-caged-consolidado.py
     # chama esta função direto, sem passar por main().
     DIR_SAIDA.mkdir(parents=True, exist_ok=True)
-    destino = DIR_SAIDA / f"caged_ti_{ano}.parquet"
+    destino = DIR_SAIDA / f"caged_unificado_{ano}.parquet"
     sql = sql_unificado(con, ano)
     if not sql:
         print(f"   ⏭️  {ano}: nenhuma das duas gerações tem dado, pulando")
@@ -180,7 +180,7 @@ def main() -> int:
     anos = [a for a in anos_disponiveis(con) if args.ano_inicio <= a <= args.ano_fim]
     ok = sum(unificar_ano(con, ano) for ano in anos)
 
-    total = sum(f.stat().st_size for f in DIR_SAIDA.glob("caged_ti_*.parquet"))
+    total = sum(f.stat().st_size for f in DIR_SAIDA.glob("caged_unificado_*.parquet"))
     print(f"\n🏁 {ok} ano(s) unificado(s) · {total / 1e6:.1f} MB no total")
     return 0 if ok else 1
 

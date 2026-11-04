@@ -1,6 +1,6 @@
 """
 Cubos do CAGED para o site de dashboards, a partir do CAGED unificado
-(caged_ti_<ano>.parquet, ver unificar.py).
+(caged_unificado_<ano>.parquet, ver unificar.py).
 
 POR QUE CUBOS
 -------------
@@ -61,11 +61,19 @@ def _normalizar(texto: str) -> str:
 
 def montar(con, origem: str, destino: Path) -> list[str]:
     """
-    Agrega os arquivos de `origem` (glob de caged_ti_<ano>.parquet) nos cubos
-    e grava um parquet por cubo em `destino`. Devolve os nomes gravados.
+    Agrega os arquivos de `origem` (glob de caged_unificado_<ano>.parquet) nos
+    cubos e grava um parquet por cubo em `destino`. Devolve os nomes gravados.
+
+    Ano a ano: todo cubo tem o ano no grão, então nenhuma soma atravessa anos e
+    juntar os anos agregados dá o mesmo que agregar tudo de uma vez. Cada passo
+    lê um ano só (as linhas de um arquivo) e guarda só o resultado agregado.
+    Antes a série inteira era copiada duas vezes para tabelas temporárias, com
+    todas as colunas: em TI cabia, na indústria (160 milhões de movimentações)
+    passava dos 73 GB de disco do runner.
     """
     destino.mkdir(parents=True, exist_ok=True)
-    con.execute(f"CREATE OR REPLACE TEMP TABLE caged_ti AS SELECT * FROM read_parquet('{origem}', union_by_name=true)")
+    leitura = f"read_parquet('{origem}', union_by_name=true)"
+    anos = [a for (a,) in con.execute(f"SELECT DISTINCT ano::INTEGER FROM {leitura} WHERE ano IS NOT NULL ORDER BY 1").fetchall()]
 
     # O dicionário do MTE grafa o mesmo estado de jeitos diferentes conforme o
     # ano ("Pará"/"Para", "Minas Gerais"/"Minas gerais"): compara sem acento e
@@ -73,8 +81,9 @@ def montar(con, origem: str, destino: Path) -> list[str]:
     casos = "\n".join(f"WHEN '{_normalizar(nome)}' THEN '{sigla}'" for nome, sigla in UF_SIGLA.items())
     cnae = f"coalesce({esc.sql_filtro_cnae('cnae_subclasse')}, false)"
     cbo = f"coalesce({esc.sql_filtro_cbo('cbo')}, false)"
-    con.execute(f"""
-        CREATE OR REPLACE TEMP TABLE base_cubo AS SELECT
+
+    def base(ano: int) -> str:
+        return f"""SELECT
             ano::INTEGER AS ano,
             mes::INTEGER AS mes,
             CASE upper(strip_accents(trim(uf))) {casos} ELSE NULL END AS uf,
@@ -86,31 +95,35 @@ def montar(con, origem: str, destino: Path) -> list[str]:
                  WHEN idade < 30 THEN '25-29' WHEN idade < 40 THEN '30-39'
                  WHEN idade < 50 THEN '40-49' ELSE '50+' END AS faixa_idade,
             saldo, salario
-        FROM caged_ti
-    """)
+        FROM {leitura} WHERE ano = {ano}"""
+
     metricas = """
         count(*) FILTER (WHERE saldo = 1)::INTEGER                       AS admissoes,
         count(*) FILTER (WHERE saldo = -1)::INTEGER                      AS desligamentos,
         sum(saldo)::INTEGER                                              AS saldo,
         sum(salario) FILTER (WHERE saldo = 1 AND salario > 0)::DOUBLE    AS soma_salario_adm,
         count(*) FILTER (WHERE saldo = 1 AND salario > 0)::INTEGER       AS n_salario_adm"""
-    for nome, grao in CUBOS.items():
+    for i, ano in enumerate(anos):
+        for nome, grao in CUBOS.items():
+            sql = f"SELECT {grao}, {metricas} FROM ({base(ano)}) GROUP BY ALL"
+            con.execute(f"CREATE OR REPLACE TEMP TABLE _{nome} AS {sql}" if i == 0 else f"INSERT INTO _{nome} {sql}")
+    for nome in CUBOS:
         arquivo = (destino / f"{nome}.parquet").as_posix()
-        con.execute(f"""COPY (SELECT {grao}, {metricas} FROM base_cubo GROUP BY ALL ORDER BY ALL)
+        con.execute(f"""COPY (SELECT * FROM _{nome} ORDER BY ALL)
                         TO '{arquivo}' (FORMAT PARQUET, COMPRESSION ZSTD, COMPRESSION_LEVEL 9)""")
+        con.execute(f"DROP TABLE _{nome}")
         linhas = con.execute(f"SELECT count(*) FROM '{arquivo}'").fetchone()[0]
         print(f"✅ {nome}: {linhas:,} linhas, {Path(arquivo).stat().st_size / 1e6:.1f} MB")
-    con.execute("DROP TABLE base_cubo; DROP TABLE caged_ti;")
     return list(CUBOS)
 
 
 def main() -> int:
     import duckdb
 
-    if not any(DIR_ENTRADA.glob("caged_ti_*.parquet")):
-        print(f"❌ nenhum caged_ti_<ano>.parquet em {DIR_ENTRADA} (rode unificar antes)")
+    if not any(DIR_ENTRADA.glob("caged_unificado_*.parquet")):
+        print(f"❌ nenhum caged_unificado_<ano>.parquet em {DIR_ENTRADA} (rode unificar antes)")
         return 1
-    montar(duckdb.connect(), (DIR_ENTRADA / "caged_ti_*.parquet").as_posix(), DIR_SAIDA)
+    montar(duckdb.connect(), (DIR_ENTRADA / "caged_unificado_*.parquet").as_posix(), DIR_SAIDA)
     return 0
 
 

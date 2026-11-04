@@ -120,7 +120,7 @@ DESCRICAO_TABELA = {
     "caged_exc": "Exclusões de movimentações (Novo CAGED)",
     "caged_old": "CAGED antigo — CAGEDEST (2007–2019)",
     "caged_ajustes": "Ajustes/declarações fora do prazo (CAGED antigo)",
-    "caged_ti": "As duas gerações harmonizadas num esquema só",
+    "caged_unificado": "As duas gerações harmonizadas num esquema só",
 }
 
 # "caged_mov_2024.parquet" -> ("caged_mov", 2024). Um arquivo por ano (ver
@@ -130,6 +130,11 @@ PADRAO_ANO = re.compile(r"^(.+)_(\d{4})\.parquet$")
 
 # Nomes do formato antigo (um arquivo por tabela, sem ano) — ver --limpar-legado.
 LEGADO = {f"{t}.parquet" for t in (*DESCRICAO_TABELA, "caged_ti")}
+
+# O unificado se chamava caged_ti_<ano> (herança do TCC, que era só de TI).
+# Numa publicação nova esses arquivos saem, no mesmo commit em que os
+# caged_unificado_<ano> entram: o repositório nunca fica com os dois.
+NOME_ANTIGO = re.compile(r"^caged_ti_\d{4}\.parquet$")
 
 
 def _cartao_da_area(cartao: str) -> str:
@@ -292,9 +297,13 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    from huggingface_hub import CommitOperationAdd
+    from huggingface_hub import CommitOperationAdd, CommitOperationDelete
 
     operacoes, total = [], 0
+    antigos = sorted(f for f in api.list_repo_files(args.repo, repo_type="dataset") if NOME_ANTIGO.match(f))
+    if antigos:
+        print(f"   🗑️  {len(antigos)} arquivo(s) com o nome antigo (caged_ti_<ano>) saem neste commit")
+        operacoes += [CommitOperationDelete(path_in_repo=f) for f in antigos]
     for arquivo in arquivos + [cartao]:
         tam = arquivo.stat().st_size
         print(f"   ⬆️  {arquivo.name:<25} {tam / 1e6:>7.1f} MB")
