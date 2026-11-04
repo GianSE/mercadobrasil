@@ -163,9 +163,20 @@ def sql_area_ti(coluna: str = "cbo2002ocupacao") -> str:
 
 
 def sql_filtro_cnae(coluna: str = "subclasse") -> str:
-    """Predicado SQL do setor de TI."""
+    """
+    Predicado SQL do setor da área.
+
+    O código passa por lpad antes de comparar: o Novo CAGED (caged_mov, 2020+)
+    grava a subclasse sem o zero à esquerda ("111301"), a RAIS e o CAGED antigo
+    com ele ("0111301"). Em TI, saúde e educação isso não muda nada — os
+    códigos delas começam por 6 ou 8 e já têm 7 dígitos —, mas sem o lpad o
+    agronegócio (seção A, divisões 01 a 03) perderia em silêncio o setor
+    inteiro no CAGED de 2020 em diante.
+    """
     lista = ", ".join(f"'{c}'" for c in CNAE_TI)
-    return f"{coluna} IN ({lista})"
+    # greatest: o lpad do DuckDB CORTA o que passa de 7 caracteres, e um
+    # "6201501 " com espaço no fim viraria "6201501". Só completa, nunca corta.
+    return f"lpad({coluna}, greatest(length({coluna}), 7)::INTEGER, '0') IN ({lista})"
 
 
 def sql_codigo_cbo(coluna: str = "cbo2002ocupacao") -> str:

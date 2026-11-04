@@ -31,6 +31,10 @@ export function infoGold(repo: string): Promise<InfoGold> {
   if (!info) {
     info = fetch(`${BASE}/api/datasets/${repo}`, SEM_REFERER)
       .then((r) => {
+        // Área recém-criada, que ainda não rodou a gold: o repositório não
+        // existe. Não é erro — a área só não tem tabela nenhuma ainda. Sem
+        // login, o Hub responde 401 (e não 404) a repositório inexistente.
+        if (r.status === 404 || r.status === 401) return { sha: "", lastModified: new Date(0).toISOString(), siblings: [] };
         if (!r.ok) throw new Error(`${repo}: HTTP ${r.status}`);
         return r.json();
       })

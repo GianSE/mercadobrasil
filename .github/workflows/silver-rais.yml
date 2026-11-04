@@ -15,7 +15,7 @@ on:
       area:
         description: "Área do recorte"
         type: choice
-        options: [tec, saude, educacao]
+        options: [tec, saude, educacao, engenharia, financas, agronegocio, comercio]
         required: true
       ano_inicio:
         description: "Ano inicial (vazio = 2007, início do recorte)"

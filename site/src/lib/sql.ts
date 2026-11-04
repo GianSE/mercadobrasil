@@ -28,3 +28,23 @@ export const coluna = (linhas: LinhaSQL[], chave: string) => linhas.map((l) => (
 export const rotulos = (linhas: LinhaSQL[], chave: string) => linhas.map((l) => String(l[chave] ?? "—"));
 
 export const intervalo = (min: number, max: number) => Array.from({ length: max - min + 1 }, (_, i) => min + i);
+
+/**
+ * Média de grupos de tamanhos diferentes tem que ser PONDERADA pelo estoque:
+ * a média das médias daria o mesmo peso a São Paulo e ao Acre.
+ */
+export const ponderada = (col: string, peso = "estoque_3112") => `sum(${peso} * ${col}) / nullif(sum(${peso}), 0)`;
+
+/** Mediana exata (rais_mediana), para quando não há filtro de território. */
+export const medianaExata = (recorte: string, extra = "TRUE") =>
+  `SELECT ano, grupo, mediana_sm AS mediana FROM rais_mediana WHERE recorte = '${recorte}' AND ${extra}`;
+
+/**
+ * Mediana da remuneração (SM) de qualquer recorte, pelo histograma da gold
+ * (faixas de 0,1 SM): acha a faixa que contém o meio e interpola dentro dela.
+ * Erro máximo de 0,05 SM. Devolve (g, mediana), um por valor de `grupo`.
+ */
+export const medianaHist = (onde: string, grupo = "ano") => `
+  WITH h AS (SELECT ${grupo} AS g, faixa, sum(vinculos) AS n FROM rais_remuneracao_hist WHERE ${onde} GROUP BY 1, 2),
+       c AS (SELECT g, faixa, n, sum(n) OVER (PARTITION BY g ORDER BY faixa) AS acum, sum(n) OVER (PARTITION BY g) AS total FROM h)
+  SELECT g, min_by((faixa + (total / 2.0 - (acum - n)) / n) * 0.1, faixa) AS mediana FROM c WHERE acum >= total / 2.0 GROUP BY g`;

@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, Cpu, GraduationCap, HeartPulse, type LucideIcon } from "lucide-react";
+import { BriefcaseBusiness, Cpu, GraduationCap, HardHat, HeartPulse, Landmark, Store, Wheat, type LucideIcon } from "lucide-react";
 import lista from "../areas.json";
 
 /*
@@ -18,6 +18,10 @@ const ICONES: Record<string, LucideIcon> = {
   tec: Cpu,
   saude: HeartPulse,
   educacao: GraduationCap,
+  engenharia: HardHat,
+  financas: Landmark,
+  agronegocio: Wheat,
+  comercio: Store,
 };
 
 export function iconeDa(area: Area): LucideIcon {

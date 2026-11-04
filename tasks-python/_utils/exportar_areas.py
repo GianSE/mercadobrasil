@@ -55,7 +55,8 @@ def main() -> int:
     saida = [_descrever(slug) for slug in areas.AREAS]
     DESTINO.parent.mkdir(parents=True, exist_ok=True)
     DESTINO.write_text(json.dumps(saida, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"✅ {len(saida)} área(s) em {DESTINO}")
+    # Sem emoji: no Windows o console é cp1252 e o print quebraria o npm run areas.
+    print(f"{len(saida)} área(s) em {DESTINO}")
     return 0
 
 

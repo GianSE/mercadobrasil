@@ -1,16 +1,37 @@
-import { BarChart, LineChart } from "echarts/charts";
-import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components";
+import { BarChart, LineChart, MapChart, ScatterChart } from "echarts/charts";
+import { GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import * as echarts from "echarts/core";
 import type { EChartsCoreOption } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTema } from "../lib/tema";
 
-echarts.use([LineChart, BarChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer]);
+echarts.use([
+  LineChart, BarChart, MapChart, ScatterChart,
+  GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, VisualMapComponent,
+  CanvasRenderer,
+]);
+
+// O contorno dos estados (site/public/geo/br_uf.json, do IBGE pelo site do
+// TCC): geometria fixa, não dado da gold. Baixado uma vez, só quando um mapa
+// aparece na tela.
+let mapaBR: Promise<void> | null = null;
+export function useMapaBR(): boolean {
+  const [pronto, setPronto] = useState(false);
+  useEffect(() => {
+    mapaBR ??= fetch("/geo/br_uf.json")
+      .then((r) => r.json())
+      .then((geo) => echarts.registerMap("BR", geo));
+    mapaBR.then(() => setPronto(true), () => {});
+  }, []);
+  return pronto;
+}
 
 /** As cores do gráfico, lidas das variáveis CSS do tema na hora de desenhar. */
 export type Tinta = {
   series: string[];
+  /** rampa sequencial de um tom só, do menor ao maior valor (mais contraste com o fundo = mais) */
+  sequencial: string[];
   texto: string;
   rotulo: string;
   grade: string;
@@ -23,6 +44,11 @@ function lerTinta(): Tinta {
   const v = (nome: string) => css.getPropertyValue(nome).trim();
   return {
     series: [1, 2, 3, 4, 5, 6].map((i) => v(`--chart-${i}`)),
+    // A rampa azul da paleta validada. No escuro ela se inverte: o maior valor
+    // é o que mais se destaca do fundo, e no escuro isso é o mais claro.
+    sequencial: document.documentElement.classList.contains("dark")
+      ? ["#104281", "#1c5cab", "#3987e5", "#86b6ef", "#cde2fb"]
+      : ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"],
     texto: v("--foreground"),
     rotulo: v("--chart-rotulo"),
     grade: v("--chart-grade"),

@@ -74,5 +74,105 @@
       "lente_so_setor": "Outra ocupação em estabelecimento de saúde",
       "nao_area": "Outra ocupação (estabelecimento de saúde)"
     }
+  },
+  {
+    "slug": "engenharia",
+    "nome": "Engenharia",
+    "sigla": "engenharia",
+    "resumo": "Engenheiros, arquitetos e técnicos de obras, eletroeletrônica, mecânica e mineração.",
+    "repo": "Gianpedro/gold-analise-mercado-engenharia",
+    "subareas": [
+      "Civil e Construção",
+      "Arquitetura e Urbanismo",
+      "Elétrica e Eletrônica",
+      "Mecânica e Mecatrônica",
+      "Produção e Qualidade",
+      "Química, Materiais e Alimentos",
+      "Minas, Geociências e Ambiental"
+    ],
+    "cnaes": 8,
+    "familias_cbo": 30,
+    "rotulos": {
+      "setor_dentro": "Empresa de engenharia",
+      "setor_fora": "Fora do setor de engenharia",
+      "lente_dentro": "Profissional de engenharia em empresa de engenharia",
+      "lente_fora": "Profissional de engenharia fora do setor de engenharia",
+      "lente_so_setor": "Outra ocupação em empresa de engenharia",
+      "nao_area": "Outra ocupação (empresa de engenharia)"
+    }
+  },
+  {
+    "slug": "financas",
+    "nome": "Finanças",
+    "sigla": "finanças",
+    "resumo": "Bancos, crédito, investimentos, seguros, contabilidade e economia.",
+    "repo": "Gianpedro/gold-analise-mercado-financas",
+    "subareas": [
+      "Bancos e Crédito",
+      "Investimentos e Relacionamento",
+      "Contabilidade e Auditoria",
+      "Seguros",
+      "Economia"
+    ],
+    "cnaes": 65,
+    "familias_cbo": 10,
+    "rotulos": {
+      "setor_dentro": "Instituição financeira",
+      "setor_fora": "Fora do setor de finanças",
+      "lente_dentro": "Profissional de finanças em instituição financeira",
+      "lente_fora": "Profissional de finanças fora do setor de finanças",
+      "lente_so_setor": "Outra ocupação em instituição financeira",
+      "nao_area": "Outra ocupação (instituição financeira)"
+    }
+  },
+  {
+    "slug": "agronegocio",
+    "nome": "Agronegócio",
+    "sigla": "agronegócio",
+    "resumo": "Lavoura, pecuária, floresta e pesca, da produção à mecanização e à ciência agrária.",
+    "repo": "Gianpedro/gold-analise-mercado-agronegocio",
+    "subareas": [
+      "Produtores Rurais",
+      "Lavoura",
+      "Pecuária",
+      "Trabalho Agropecuário Geral",
+      "Floresta e Pesca",
+      "Mecanização e Irrigação",
+      "Ciência e Técnica Agrária"
+    ],
+    "cnaes": 122,
+    "familias_cbo": 53,
+    "rotulos": {
+      "setor_dentro": "Estabelecimento agropecuário",
+      "setor_fora": "Fora do setor de agronegócio",
+      "lente_dentro": "Profissional de agronegócio em estabelecimento agropecuário",
+      "lente_fora": "Profissional de agronegócio fora do setor de agronegócio",
+      "lente_so_setor": "Outra ocupação em estabelecimento agropecuário",
+      "nao_area": "Outra ocupação (estabelecimento agropecuário)"
+    }
+  },
+  {
+    "slug": "comercio",
+    "nome": "Comércio",
+    "sigla": "comércio",
+    "resumo": "Vendedores, caixas, compradores e gestão comercial no varejo e no atacado.",
+    "repo": "Gianpedro/gold-analise-mercado-comercio",
+    "subareas": [
+      "Vendas no Varejo e Atacado",
+      "Caixas e Atendimento",
+      "Gestão Comercial",
+      "Representação e Compras",
+      "Venda Direta e Ambulante"
+    ],
+    "cnaes": 231,
+    "familias_cbo": 10,
+    "rotulos": {
+      "setor_dentro": "Estabelecimento comercial",
+      "setor_fora": "Fora do setor de comércio",
+      "lente_dentro": "Profissional de comércio em estabelecimento comercial",
+      "lente_fora": "Profissional de comércio fora do setor de comércio",
+      "lente_so_setor": "Outra ocupação em estabelecimento comercial",
+      "nao_area": "Outra ocupação (estabelecimento comercial)"
+    }
   }
 ]

@@ -33,7 +33,7 @@ on:
       area:
         description: "Área do recorte"
         type: choice
-        options: [tec, saude, educacao]
+        options: [tec, saude, educacao, engenharia, financas, agronegocio, comercio]
         required: true
       comecar_em:
         description: "A partir de qual camada rodar"

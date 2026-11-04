@@ -3,6 +3,7 @@ import { BarraFiltros, FiltroPeriodo, SeletorUF } from "../../components/Filtros
 import { Grafico } from "../../components/Grafico";
 import { Indicador } from "../../components/Indicador";
 import { Painel } from "../../components/Painel";
+import { Titulo } from "../../components/Titulo";
 import { Segmentado } from "../../components/ui/segmentado";
 import type { Area } from "../../lib/areas";
 import { useConsulta, type LinhaSQL } from "../../lib/db";
@@ -83,15 +84,6 @@ export function Crescimento({ area }: { area: Area }) {
 
       <Fluxo area={area} periodo={periodo} />
       <Comparar area={area} periodo={periodo} />
-    </div>
-  );
-}
-
-function Titulo({ pergunta, resposta }: { pergunta: string; resposta?: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <h2 className="text-xl font-semibold tracking-tight">{pergunta}</h2>
-      {resposta && <p className="max-w-3xl text-muted-foreground">{resposta}</p>}
     </div>
   );
 }

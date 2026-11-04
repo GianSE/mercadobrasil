@@ -161,3 +161,153 @@ export function opcaoFluxo(
     series,
   };
 }
+
+/** Ranking em barras horizontais, do maior para o menor (a ordem é a dos dados), com o valor na ponta. */
+export function opcaoBarrasH(
+  t: Tinta,
+  categorias: string[],
+  valores: (number | null)[],
+  o: { formato?: Formato; nome?: string; cor?: string; larguraRotulo?: number } = {},
+): EChartsCoreOption {
+  const formato = o.formato ?? fmt.compacto;
+  return {
+    ...base(t),
+    legend: { show: false },
+    grid: { left: 8, right: 64, top: 8, bottom: 8, containLabel: true },
+    tooltip: { ...(base(t).tooltip as object), trigger: "item", valueFormatter: (v: number) => formato(v) },
+    xAxis: eixo(t, { type: "value", axisLabel: { show: false }, splitLine: { show: false } }),
+    yAxis: eixo(t, {
+      type: "category",
+      data: categorias,
+      inverse: true,
+      axisLine: { show: false },
+      axisLabel: { color: t.texto, width: o.larguraRotulo ?? 170, overflow: "truncate" },
+    }),
+    series: [
+      {
+        type: "bar",
+        name: o.nome ?? "valor",
+        data: valores,
+        itemStyle: { color: o.cor ?? t.series[0], borderRadius: [0, 4, 4, 0] },
+        barMaxWidth: 20,
+        label: { show: true, position: "right", color: t.rotulo, formatter: (p: { value: number }) => formato(p.value) },
+      },
+    ],
+  };
+}
+
+/** Coroplético dos estados (precisa de useMapaBR pronto). Cor sequencial de um tom só. */
+export function opcaoMapa(t: Tinta, dados: { uf: string; valor: number | null }[], o: { formato?: Formato; nome: string }): EChartsCoreOption {
+  const formato = o.formato ?? fmt.compacto;
+  const valores = dados.map((d) => d.valor).filter((v): v is number => v !== null && Number.isFinite(v));
+  return {
+    ...base(t),
+    legend: { show: false },
+    tooltip: {
+      ...(base(t).tooltip as object),
+      trigger: "item",
+      formatter: (p: { name: string; value: number }) => `<b>${p.name}</b><br/>${o.nome}: ${Number.isFinite(p.value) ? formato(p.value) : "—"}`,
+    },
+    visualMap: {
+      min: valores.length ? Math.min(...valores) : 0,
+      max: valores.length ? Math.max(...valores) : 1,
+      calculable: false,
+      orient: "horizontal",
+      left: 0,
+      bottom: 0,
+      itemWidth: 10,
+      itemHeight: 140,
+      text: [formato(valores.length ? Math.max(...valores) : 1), formato(valores.length ? Math.min(...valores) : 0)],
+      textStyle: { color: t.rotulo },
+      inRange: { color: t.sequencial },
+    },
+    series: [
+      {
+        type: "map",
+        map: "BR",
+        nameProperty: "sigla",
+        roam: false,
+        // Sem o marcador que o ECharts põe no centro de cada estado.
+        showLegendSymbol: false,
+        data: dados.map((d) => ({ name: d.uf, value: d.valor })),
+        itemStyle: { borderColor: t.fundo, borderWidth: 1, areaColor: t.grade },
+        emphasis: { label: { show: false }, itemStyle: { areaColor: t.series[3] } },
+        select: { disabled: true },
+      },
+    ],
+  };
+}
+
+/** Saldo observado e projetado, com a faixa de 80% da projeção como área. */
+export function opcaoPrevisao(
+  t: Tinta,
+  meses: string[],
+  observado: (number | null)[],
+  previsto: (number | null)[],
+  inferior: (number | null)[],
+  superior: (number | null)[],
+): EChartsCoreOption {
+  const largura = superior.map((s, i) => (s === null || inferior[i] === null ? null : s - inferior[i]!));
+  return {
+    ...base(t),
+    legend: { show: false },
+    grid: { left: 8, right: 16, top: 12, bottom: 8, containLabel: true },
+    tooltip: {
+      ...(base(t).tooltip as object),
+      trigger: "axis",
+      formatter: (params: unknown) => {
+        const lista = params as Ponto[];
+        const i = lista[0]?.dataIndex ?? 0;
+        const linhas = [
+          observado[i] !== null && `Observado: <b>${fmt.sinal(observado[i]!)}</b>`,
+          previsto[i] !== null && observado[i] === null && `Previsto: <b>${fmt.sinal(previsto[i]!)}</b>`,
+          inferior[i] !== null && `Faixa de 80%: ${fmt.sinal(inferior[i]!)} a ${fmt.sinal(superior[i]!)}`,
+        ].filter(Boolean);
+        return `<div style="font-size:11px;opacity:.7">${meses[i]}</div>${linhas.join("<br/>")}`;
+      },
+    },
+    xAxis: eixo(t, { type: "category", data: meses, boundaryGap: false, splitLine: { show: false }, axisLabel: { color: t.rotulo, hideOverlap: true } }),
+    yAxis: eixo(t, { type: "value", axisLabel: { color: t.rotulo, formatter: (v: number) => fmt.compacto(v) } }),
+    series: [
+      // A faixa: a base invisível no limite inferior e a largura empilhada por cima.
+      { type: "line", name: "_base", data: inferior, stack: "faixa", lineStyle: { opacity: 0 }, showSymbol: false, silent: true },
+      { type: "line", name: "Faixa de 80%", data: largura, stack: "faixa", lineStyle: { opacity: 0 }, areaStyle: { color: t.series[0], opacity: 0.18 }, showSymbol: false, silent: true },
+      { type: "line", name: "Observado", data: observado, showSymbol: false, lineStyle: { width: 2, color: t.texto }, itemStyle: { color: t.texto } },
+      { type: "line", name: "Previsto", data: previsto, showSymbol: false, lineStyle: { width: 2, color: t.series[0], type: "dashed" }, itemStyle: { color: t.series[0] } },
+    ],
+  };
+}
+
+/**
+ * Razão de chances de cada característica contra a referência do grupo, em
+ * escala logarítmica (×2 e ×0,5 ficam à mesma distância do ×1). Ponto vazado:
+ * não difere da referência com segurança (p ≥ 0,05).
+ */
+export function opcaoRazaoChances(t: Tinta, itens: { rotulo: string; valor: number; p: number }[]): EChartsCoreOption {
+  return {
+    ...base(t),
+    legend: { show: false },
+    grid: { left: 8, right: 24, top: 8, bottom: 8, containLabel: true },
+    tooltip: {
+      ...(base(t).tooltip as object),
+      trigger: "item",
+      formatter: (p: { dataIndex: number }) => {
+        const i = itens[p.dataIndex];
+        return `<b>${i.rotulo}</b><br/>×${i.valor.toFixed(2).replace(".", ",")} · p ${i.p < 0.001 ? "< 0,001" : i.p.toFixed(3).replace(".", ",")}`;
+      },
+    },
+    xAxis: eixo(t, { type: "log", logBase: 2, axisLabel: { color: t.rotulo, formatter: (v: number) => `×${v.toLocaleString("pt-BR")}` } }),
+    yAxis: eixo(t, { type: "category", data: itens.map((i) => i.rotulo), inverse: true, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: t.texto, width: 260, overflow: "truncate" } }),
+    series: [
+      {
+        type: "scatter",
+        data: itens.map((i, k) => ({
+          value: [i.valor, k],
+          itemStyle: i.p < 0.05 ? { color: i.valor >= 1 ? t.series[1] : t.series[0] } : { color: t.fundo, borderColor: t.rotulo, borderWidth: 1.5 },
+        })),
+        symbolSize: 10,
+        markLine: { silent: true, symbol: "none", data: [{ xAxis: 1 }], lineStyle: { color: t.rotulo, type: "dashed" }, label: { show: false } },
+      },
+    ],
+  };
+}

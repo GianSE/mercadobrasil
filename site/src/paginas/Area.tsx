@@ -1,23 +1,27 @@
-import { ArrowLeft } from "lucide-react";
-import { lazy, Suspense, useEffect, type ComponentProps } from "react";
+import { ArrowLeft, Clock } from "lucide-react";
+import { lazy, Suspense, useEffect, useState, type ComponentProps } from "react";
 import { Link, useLocation } from "wouter";
 import { Skeleton } from "../components/ui/skeleton";
 import { Badge } from "../components/ui/badge";
 import { acharArea, AREAS, iconeDa, type Area as TipoArea } from "../lib/areas";
+import { infoGold } from "../lib/dados";
 import { ProvedorFiltro } from "../lib/filtro";
 import { cn } from "../lib/utils";
 import { VisaoGeral } from "./area/VisaoGeral";
 
 // As seções que consultam com SQL trazem o DuckDB: só carregam quando abertas.
 const Crescimento = lazy(() => import("./area/Crescimento").then((m) => ({ default: m.Crescimento })));
+const Onde = lazy(() => import("./area/Onde").then((m) => ({ default: m.Onde })));
+const Trabalho = lazy(() => import("./area/Trabalho").then((m) => ({ default: m.Trabalho })));
+const Modelos = lazy(() => import("./area/Modelos").then((m) => ({ default: m.Modelos })));
 
 /** As seções da área, na ordem das abas. `pronta: false` aparece desativada, como "em breve". */
 const SECOES = [
   { id: "", rotulo: "Visão geral", pronta: true },
   { id: "crescimento", rotulo: "Crescimento", pronta: true },
-  { id: "onde", rotulo: "Onde", pronta: false },
-  { id: "trabalho", rotulo: "Trabalho", pronta: false },
-  { id: "modelos", rotulo: "Modelos", pronta: false },
+  { id: "onde", rotulo: "Onde", pronta: true },
+  { id: "trabalho", rotulo: "Trabalho", pronta: true },
+  { id: "modelos", rotulo: "Modelos", pronta: true },
 ] as const;
 
 export function Area({ slug, secao = "" }: { slug: string; secao?: string }) {
@@ -43,6 +47,12 @@ export function Area({ slug, secao = "" }: { slug: string; secao?: string }) {
 
 function LayoutArea({ area, secao }: { area: TipoArea; secao: string }) {
   const Icone = iconeDa(area);
+  // Área criada há pouco, que ainda não rodou a gold: um aviso só, no topo,
+  // em vez de cada cartão dizer sozinho que não há dados.
+  const [semGold, setSemGold] = useState(false);
+  useEffect(() => {
+    infoGold(area.repo).then((i) => setSemGold(i.tabelas.size === 0), () => {});
+  }, [area.repo]);
   const caminho = (slug: string, id: string) => `/${slug}${id ? `/${id}` : ""}`;
 
   return (
@@ -104,9 +114,22 @@ function LayoutArea({ area, secao }: { area: TipoArea; secao: string }) {
           )}
         </nav>
 
+        {semGold && (
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-dashed p-4 text-sm">
+            <Clock className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <p>
+              <span className="font-medium">{area.nome} ainda não tem dados publicados.</span>{" "}
+              <span className="text-muted-foreground">A área já está definida; os números aparecem aqui quando a pipeline dela rodar.</span>
+            </p>
+          </div>
+        )}
+
         <Suspense fallback={<Skeleton className="h-96" />}>
           {secao === "" && <VisaoGeral area={area} />}
           {secao === "crescimento" && <Crescimento area={area} />}
+          {secao === "onde" && <Onde area={area} />}
+          {secao === "trabalho" && <Trabalho area={area} />}
+          {secao === "modelos" && <Modelos area={area} />}
         </Suspense>
       </main>
     </ProvedorFiltro>
