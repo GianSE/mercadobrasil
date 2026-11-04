@@ -1,7 +1,7 @@
 """
 Silver de área — recorta da silver completa (a base inteira já traduzida) o
-que é da área pedida em AREA e publica em silver-<base>-<área>
-(Gianpedro/silver-caged-tec, Gianpedro/silver-rais-saude, ...).
+que é da área pedida em AREA e publica na pasta da área do repositório de
+área (Gianpedro/silver-caged-area/saude/..., Gianpedro/silver-rais-area/tec/...).
 
 Não traduz nada: a tradução é a da silver completa, a mesma da silver de TI
 (silver-caged-ti.py com --completa). Recortar TI da completa dá, linha a
@@ -35,6 +35,7 @@ sys.path.insert(0, str(_AQUI.parent))
 from silver_caged import mapeamento as mp_caged  # noqa: E402
 from silver_rais import mapeamento as mp_rais  # noqa: E402
 from _utils import areas, escopo_tecnologia as esc, log, nuvem, telegram  # noqa: E402
+from _utils.cartoes_raiz import cartao_raiz  # noqa: E402
 
 log.ativar_horario()
 
@@ -125,9 +126,9 @@ ODC-BY: cite a fonte original e este tratamento.
     return local
 
 
-def _particoes(repo: str, tabela: str) -> set[tuple[int, int | None]]:
+def _particoes(repo: str, pasta: str) -> set[tuple[int, int | None]]:
     """(ano, mês) das partições de uma tabela num repo, pela listagem. Mês None nas tabelas anuais."""
-    padrao = re.compile(rf"^{tabela}/ano_particao=(\d{{4}})(?:/mes_particao=(\d{{1,2}}))?/[^/]+\.parquet$")
+    padrao = re.compile(rf"^{re.escape(pasta)}/ano_particao=(\d{{4}})(?:/mes_particao=(\d{{1,2}}))?/[^/]+\.parquet$")
     vistas = set()
     for caminho in nuvem.arquivos_remotos(repo):
         if m := padrao.match(caminho):
@@ -142,7 +143,7 @@ def modo_verificar(args) -> int:
     pares = []
     for tabela in args.tabela:
         completa = _particoes(nuvem.repo_silver(tabela, completa=True), tabela)
-        area = _particoes(nuvem.repo_silver(tabela), tabela)
+        area = _particoes(nuvem.repo_silver(tabela), nuvem.pasta_silver(tabela))
         # Um mês da completa sem o mesmo mês na área deixa o ano inteiro
         # pendente: a publicação substitui o ano, nunca só o mês.
         candidatos = {a for a, _ in completa} if args.forcar else {a for a, _ in completa - area}
@@ -223,7 +224,7 @@ def recortar(con, tabela: str, ano: int) -> bool:
             raise
         linhas = 0
     if linhas:
-        nuvem.publicar_particoes(con, destino, nuvem.repo_silver(tabela), tabela)
+        nuvem.publicar_particoes(con, destino, nuvem.repo_silver(tabela), tabela, pasta=nuvem.pasta_silver(tabela))
     print(f"   📊 {tabela} {ano}: {linhas:,} linhas em {(time.time() - inicio) / 60:.1f} min")
     shutil.rmtree(destino, ignore_errors=True)
     return True
@@ -248,12 +249,19 @@ def modo_processar(args) -> int:
 def main() -> int:
     args = _argumentos()
     repo = nuvem.repo_silver(args.tabela[0])
-    # No CAGED o cartão é do gold-caged-consolidado (gold_caged/publicar_hf.py),
-    # que publica no mesmo repositório: aqui ele só nasce, para os dois não se
-    # sobrescreverem a cada execução. Na RAIS o cartão é só deste script.
-    if args.base == "rais" or not nuvem.existe_remoto(repo, "README.md"):
-        if nuvem.publicar_cartao(repo, _cartao(args.base, repo)):
-            print(f"   📝 cartão de {repo} atualizado")
+    # O cartão da raiz é o índice das áreas, o mesmo para todas: só sobe se mudou.
+    nuvem.preparar_staging()
+    raiz = nuvem.DIR_TEMP / f"cartao_raiz_{args.base}.md"
+    raiz.write_text(cartao_raiz(repo), encoding="utf-8")
+    if nuvem.publicar_cartao(repo, raiz):
+        print(f"   📝 cartão da raiz de {repo} atualizado")
+    # O cartão da área fica na pasta dela. No CAGED ele é do
+    # gold-caged-consolidado (gold_caged/publicar_hf.py), que publica na mesma
+    # pasta: aqui só nasce, para os dois não se sobrescreverem a cada execução.
+    cartao_area = f"{esc.AREA}/README.md"
+    if args.base == "rais" or not nuvem.existe_remoto(repo, cartao_area):
+        if nuvem.publicar_cartao(repo, _cartao(args.base, repo), cartao_area):
+            print(f"   📝 cartão de {repo}/{cartao_area} atualizado")
     if args.modo == "verificar":
         return modo_verificar(args)
     return modo_processar(args)

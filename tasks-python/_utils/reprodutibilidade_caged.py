@@ -83,7 +83,7 @@ def main() -> int:
     try:
         antigas = con.execute(
             f"SELECT tabela, ano, arquivos_bronze, linhas_no_bruto, linhas_publicadas, diferenca "
-            f"FROM read_csv('hf://datasets/{nuvem.REPO_GOLD}/auditoria/reprodutibilidade_caged.csv')").fetchall()
+            f"FROM read_csv('hf://datasets/{nuvem.REPO_GOLD}/{nuvem.caminho_na_gold('auditoria/reprodutibilidade_caged.csv')}')").fetchall()
         linhas += [tuple(r) for r in antigas if (r[0], r[1]) not in medidas]
         linhas.sort(key=lambda l: (list(mp.TODAS_TABELAS).index(l[0]) if l[0] in mp.TODAS_TABELAS else 99, l[1]))
     except Exception:
@@ -98,7 +98,7 @@ def main() -> int:
     local = nuvem.DIR_TEMP / "reprodutibilidade_caged.csv"
     local.write_text(csv, encoding="utf-8")
     if not args.sem_publicar:
-        nuvem.publicar_arquivo(local, nuvem.REPO_GOLD, "auditoria/reprodutibilidade_caged.csv")
+        nuvem.publicar_arquivo(local, nuvem.REPO_GOLD, nuvem.caminho_na_gold("auditoria/reprodutibilidade_caged.csv"))
         print(f"📤 auditoria/reprodutibilidade_caged.csv em {nuvem.REPO_GOLD}")
 
     if resumo := os.getenv("GITHUB_STEP_SUMMARY"):

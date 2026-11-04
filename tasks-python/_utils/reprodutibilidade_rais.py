@@ -82,7 +82,7 @@ def main() -> int:
     nuvem.preparar_staging()
     local.write_text(csv, encoding="utf-8")
     if not args.sem_publicar:
-        nuvem.publicar_arquivo(local, nuvem.REPO_GOLD, "auditoria/reprodutibilidade_rais.csv")
+        nuvem.publicar_arquivo(local, nuvem.REPO_GOLD, nuvem.caminho_na_gold("auditoria/reprodutibilidade_rais.csv"))
         print(f"📤 auditoria/reprodutibilidade_rais.csv em {nuvem.REPO_GOLD}")
 
     if resumo := os.getenv("GITHUB_STEP_SUMMARY"):

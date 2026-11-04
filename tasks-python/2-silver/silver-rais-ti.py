@@ -56,7 +56,8 @@ def modo_verificar(args) -> int:
     pares = []
     for tabela in mp.TABELAS_RAIS:
         bronze = nuvem.anos_no_repo(nuvem.repo_bronze(tabela), tabela, "ano")
-        silver = nuvem.anos_no_repo(nuvem.repo_silver(tabela, args.completa), tabela, "ano_particao")
+        silver = nuvem.anos_no_repo(nuvem.repo_silver(tabela, args.completa),
+                                    nuvem.pasta_silver(tabela, args.completa), "ano_particao")
         candidatos = bronze if args.forcar else bronze - silver
         faltam = sorted(a for a in candidatos if ano_inicio <= a <= ano_fim)
         print(f"   {tabela}: {len(bronze)} ano(s) na bronze, {len(silver)} já na silver, "

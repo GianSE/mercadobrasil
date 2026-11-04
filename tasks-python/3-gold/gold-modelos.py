@@ -37,7 +37,7 @@ def _semear_rais_estoque_anual() -> None:
 
     nuvem.DIR_GOLD_LOCAL.mkdir(parents=True, exist_ok=True)
     try:
-        caminho = hf_hub_download(nuvem.REPO_GOLD, "rais_estoque_anual.parquet",
+        caminho = hf_hub_download(nuvem.REPO_GOLD, nuvem.caminho_na_gold("rais_estoque_anual.parquet"),
                                   repo_type="dataset")
         shutil.copy(caminho, nuvem.DIR_GOLD_LOCAL / "rais_estoque_anual.parquet")
         print("✅ rais_estoque_anual.parquet semeado (de gold-rais.py)")

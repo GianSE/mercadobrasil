@@ -2,7 +2,7 @@ name: Gold CAGED consolidado por área
 run-name: "Gold CAGED consolidado · ${{ inputs.area }}"
 
 # Um parquet por tabela e por ano, mais o CAGED unificado e os cubos, a
-# partir de silver-caged-<área>. Publica o espelho no repositório da silver
+# partir de silver-caged-area/<área>. Publica o espelho na pasta da área da silver
 # da área e os cubos na gold da área.
 
 on:

@@ -1,8 +1,8 @@
 name: Gold RAIS por área
 run-name: "Gold RAIS · ${{ inputs.area }}"
 
-# Estoque de emprego da área escolhida, a partir de silver-rais-<área>.
-# Publica em Gianpedro/gold-analise-mercado-<área>. A área só troca as listas do recorte e os
+# Estoque de emprego da área escolhida, a partir de silver-rais-area/<área>.
+# Publica em Gianpedro/gold-mercado-brasil/<área>. A área só troca as listas do recorte e os
 # repositórios (ver tasks-python/_utils/areas.py).
 
 on:

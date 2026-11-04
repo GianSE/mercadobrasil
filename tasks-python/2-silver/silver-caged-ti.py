@@ -71,7 +71,8 @@ def modo_verificar(args) -> int:
     pares = []
     for tabela in mp.TODAS_TABELAS:
         bronze = nuvem.anos_no_repo(nuvem.repo_bronze(tabela), tabela, "ano")
-        silver = nuvem.anos_no_repo(nuvem.repo_silver(tabela, args.completa), tabela, "ano_particao")
+        silver = nuvem.anos_no_repo(nuvem.repo_silver(tabela, args.completa),
+                                    nuvem.pasta_silver(tabela, args.completa), "ano_particao")
         # Comparar só o ano deixava o CAGED parado: depois que o primeiro mês de
         # um ano entra na silver, o ano "existe" e os meses seguintes nunca eram
         # traduzidos. Um mês da bronze sem o mesmo mês na silver também deixa o
@@ -79,7 +80,8 @@ def modo_verificar(args) -> int:
         # registros (exclusões, fora do prazo), isso pode reprocessar um ano à
         # toa — custo pequeno; deixar de traduzir um mês é erro silencioso.
         meses_bronze = _meses_no_repo(nuvem.repo_bronze(tabela), tabela, "ano", "mes")
-        meses_silver = _meses_no_repo(nuvem.repo_silver(tabela, args.completa), tabela, "ano_particao", "mes_particao")
+        meses_silver = _meses_no_repo(nuvem.repo_silver(tabela, args.completa),
+                                      nuvem.pasta_silver(tabela, args.completa), "ano_particao", "mes_particao")
         com_mes_faltando = {a for a, _ in meses_bronze - meses_silver} if meses_silver else set()
         candidatos = bronze if args.forcar else (bronze - silver) | com_mes_faltando
         faltam = sorted(a for a in candidatos if ano_inicio <= a <= ano_fim)

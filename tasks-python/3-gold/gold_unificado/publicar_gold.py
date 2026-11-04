@@ -29,6 +29,7 @@ import sys
 from pathlib import Path
 
 from _utils import escopo_tecnologia as esc, nuvem
+from _utils.cartoes_raiz import cartao_raiz
 
 # A gold da área do recorte (ver _utils/nuvem.py): em TI, a de sempre.
 REPO = nuvem.REPO_GOLD
@@ -161,8 +162,14 @@ def main() -> int:
         total = sum(a.stat().st_size for a in arquivos)
         print(f"   {len(arquivos)} tabela(s), {total / 1e6:.1f} MB")
 
-    api.upload_folder(folder_path=str(DIR_LOCAL), repo_id=args.repo,
+    # A pasta inteira (tabelas e o cartão da área) vai para a pasta da área;
+    # a raiz do repositório tem o índice das áreas.
+    api.upload_folder(folder_path=str(DIR_LOCAL), repo_id=args.repo, path_in_repo=esc.AREA,
                       repo_type="dataset")
+    raiz = DIR_LOCAL.parent / "_cartao_raiz_gold.md"
+    raiz.write_text(cartao_raiz(args.repo), encoding="utf-8")
+    if nuvem.publicar_cartao(args.repo, raiz):
+        print("   📝 cartão da raiz atualizado")
     print(f"\n🏁 https://huggingface.co/datasets/{args.repo}")
     return 0
 

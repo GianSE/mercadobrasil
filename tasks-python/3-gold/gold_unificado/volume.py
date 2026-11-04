@@ -28,8 +28,9 @@ TABELAS_SILVER = ("caged_mov/", "caged_old/", "caged_for/", "caged_exc/", "caged
 CAMADAS = [
     ("Bronze", "RAIS", nuvem.REPO_BRONZE_RAIS, None),
     ("Bronze", "CAGED", nuvem.REPO_BRONZE_CAGED, None),
-    (f"Silver de {esc.SIGLA}", "RAIS", nuvem.REPO_SILVER_TI_RAIS, TABELAS_SILVER),
-    (f"Silver de {esc.SIGLA}", "CAGED", nuvem.REPO_SILVER_TI_CAGED, TABELAS_SILVER),
+    # Nos repositórios de área, só a pasta desta área.
+    (f"Silver de {esc.SIGLA}", "RAIS", nuvem.REPO_SILVER_TI_RAIS, tuple(f"{esc.AREA}/{t}" for t in TABELAS_SILVER)),
+    (f"Silver de {esc.SIGLA}", "CAGED", nuvem.REPO_SILVER_TI_CAGED, tuple(f"{esc.AREA}/{t}" for t in TABELAS_SILVER)),
 ]
 
 
@@ -50,7 +51,9 @@ def medir(con) -> list[tuple]:
         # da RAIS junta vínculos e estabelecimentos, que não se somam.
         por_tabela: dict[str, list] = {}
         for f in arquivos:
-            por_tabela.setdefault(f.path.split("/")[0], []).append(f)
+            # A tabela é a primeira pasta depois da área, quando há área.
+            partes = f.path.split("/")
+            por_tabela.setdefault(partes[1] if partes[0] == esc.AREA else partes[0], []).append(f)
         for tabela, grupo in sorted(por_tabela.items()):
             lista = "[" + ", ".join(f"'{nuvem.fonte_leitura(repo, f.path)}'" for f in grupo) + "]"
             registros = con.execute(f"SELECT sum(num_rows) FROM parquet_file_metadata({lista})").fetchone()[0]

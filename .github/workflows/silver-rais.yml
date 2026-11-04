@@ -1,7 +1,7 @@
 name: Silver RAIS por área
 run-name: "Silver RAIS · ${{ inputs.area }}"
 
-# A silver da área escolhida, em Gianpedro/silver-rais-<área>: recorte da
+# A silver da área escolhida, em Gianpedro/silver-rais-area/<área>: recorte da
 # silver completa (Gianpedro/silver-rais, já traduzida), sem ler a bronze
 # (silver-area.py). Depende da silver-rais-completa.yml estar em dia.
 #

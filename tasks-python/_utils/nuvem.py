@@ -15,25 +15,25 @@ from pathlib import Path
 
 from _utils.areas import area_selecionada
 
-# A área do recorte (ver _utils/areas.py) dá nome à silver e à gold, no mesmo
-# padrão do TCC: Gianpedro/silver-caged-saude, Gianpedro/silver-rais-saude e
-# Gianpedro/gold-analise-mercado-saude. TI aqui se chama "tec", para não
-# escrever nos conjuntos do TCC (silver-caged-ti, gold-analise-mercado-ti),
-# que o repositório mercadotech continua mantendo. Os nomes das constantes
-# continuam "_TI" porque o código inteiro os importa assim.
+# Sete repositórios: bronze-caged e bronze-rais, as duas silvers completas, as
+# duas silvers de área e a gold. Nos três de área, cada área é uma PASTA com o
+# slug dela: silver-caged-area/saude/caged_mov/..., gold-mercado-brasil/saude/...
+# TI aqui se chama "tec": os conjuntos do TCC (silver-caged-ti,
+# gold-analise-mercado-ti) são do repositório mercadotech e ficam à parte. Os
+# nomes das constantes continuam "_TI" porque o código inteiro os importa assim.
 AREA = area_selecionada()
 
 REPO_BRONZE_CAGED = os.getenv("REPO_BRONZE_CAGED", "Gianpedro/bronze-caged")
 REPO_BRONZE_RAIS = os.getenv("REPO_BRONZE_RAIS", "Gianpedro/bronze-rais")
-REPO_SILVER_TI_CAGED = os.getenv("REPO_SILVER_TI_CAGED", f"Gianpedro/silver-caged-{AREA}")
-REPO_SILVER_TI_RAIS = os.getenv("REPO_SILVER_TI_RAIS", f"Gianpedro/silver-rais-{AREA}")
+REPO_SILVER_TI_CAGED = os.getenv("REPO_SILVER_TI_CAGED", "Gianpedro/silver-caged-area")
+REPO_SILVER_TI_RAIS = os.getenv("REPO_SILVER_TI_RAIS", "Gianpedro/silver-rais-area")
 # A silver completa: a mesma tradução, sem recorte (todas as ocupações e
 # setores). É a base inteira para quem quiser consumir, e a origem da silver
 # de toda área (ver 2-silver/silver-area.py). Ela e a bronze são as mesmas do
 # repositório mercadotech: as duas camadas não dependem de área.
 REPO_SILVER_CAGED = os.getenv("REPO_SILVER_CAGED", "Gianpedro/silver-caged")
 REPO_SILVER_RAIS = os.getenv("REPO_SILVER_RAIS", "Gianpedro/silver-rais")
-REPO_GOLD = os.getenv("REPO_GOLD", f"Gianpedro/gold-analise-mercado-{AREA}")
+REPO_GOLD = os.getenv("REPO_GOLD", "Gianpedro/gold-mercado-brasil")
 # A gold do TCC, de onde uma área nova tira as referências que não dependem do
 # recorte (as coordenadas dos municípios), até ter as suas.
 REPO_GOLD_REFERENCIA = os.getenv("REPO_GOLD_REFERENCIA", "Gianpedro/gold-analise-mercado-ti")
@@ -55,10 +55,23 @@ def repo_silver_ti(tabela: str) -> str:
 
 
 def repo_silver(tabela: str, completa: bool = False) -> str:
-    """Repositório da silver: o recorte de TI (padrão) ou a base inteira."""
+    """Repositório da silver: o da área (padrão) ou a base inteira."""
     if not completa:
         return repo_silver_ti(tabela)
     return REPO_SILVER_RAIS if tabela.startswith("rais") else REPO_SILVER_CAGED
+
+
+def pasta_silver(tabela: str, completa: bool = False) -> str:
+    """
+    Onde a tabela mora dentro do repositório: `caged_mov` na silver completa,
+    `saude/caged_mov` na silver de área (uma pasta por área no mesmo repo).
+    """
+    return tabela if completa else f"{AREA}/{tabela}"
+
+
+def caminho_na_gold(nome: str) -> str:
+    """Caminho de um arquivo da gold da área no repositório: `saude/rais_estoque_anual.parquet`."""
+    return f"{AREA}/{nome}"
 
 
 def fonte_leitura(repo: str, prefixo: str = "") -> str:
@@ -120,12 +133,13 @@ def fonte_bronze(tabela: str, resto: str = "**/*.parquet") -> str:
 
 
 def fonte_silver_ti(tabela: str, resto: str = "**/*.parquet") -> str:
-    return fonte_parquet(repo_silver_ti(tabela), f"{tabela}/{resto}")
+    """A silver da área (a pasta dela no repositório de área)."""
+    return fonte_parquet(repo_silver_ti(tabela), f"{pasta_silver(tabela)}/{resto}")
 
 
 def glob_silver_ti(tabela: str, resto: str = "**/*.parquet") -> str:
     """Glob cru, só pro dashboard: ele não instala huggingface_hub, então não lista."""
-    return fonte_leitura(repo_silver_ti(tabela), f"{tabela}/{resto}")
+    return fonte_leitura(repo_silver_ti(tabela), f"{pasta_silver(tabela)}/{resto}")
 
 
 def caminho_gold(nome: str) -> str:
@@ -416,7 +430,8 @@ def publicar_diretorio(local_dir: Path, repo: str, prefixo_repo: str = "") -> in
     return len(arquivos)
 
 
-def publicar_particoes(con, local_dir: Path, repo: str, tabela: str, consolidar: bool = True) -> int:
+def publicar_particoes(con, local_dir: Path, repo: str, tabela: str, consolidar: bool = True,
+                       pasta: str | None = None) -> int:
     """
     Publica a reconstrução de uma tabela da silver SUBSTITUINDO os anos
     reconstruídos, em vez de acrescentar arquivos a eles.
@@ -441,6 +456,10 @@ def publicar_particoes(con, local_dir: Path, repo: str, tabela: str, consolidar:
     `consolidar=False` publica os pedaços como saíram (um por arquivo de
     origem): na RAIS completa, um ano inteiro num arquivo só passaria de
     alguns GB, e consolidar copiaria o ano de novo no disco do runner.
+
+    `pasta` é onde a tabela mora no repositório (padrão: o nome dela). Nos
+    repositórios de área é `<área>/<tabela>`, e a substituição do ano olha só
+    essa pasta: publicar saúde nunca apaga o 2025 de educação.
     """
     import re
 
@@ -450,6 +469,7 @@ def publicar_particoes(con, local_dir: Path, repo: str, tabela: str, consolidar:
 
     from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi
 
+    pasta = pasta or tabela
     remotos = arquivos_remotos(repo, forcar=True)
     consolidado_dir = local_dir.parent / f"_consolidado_{tabela}"
     consolidado_dir.mkdir(parents=True, exist_ok=True)
@@ -461,7 +481,7 @@ def publicar_particoes(con, local_dir: Path, repo: str, tabela: str, consolidar:
         anos.add(ano)
         if not consolidar:
             for arq in sorted(folha.glob("*.parquet")):
-                adicionar.append(CommitOperationAdd(path_in_repo=f"{tabela}/{rel}/{arq.name}",
+                adicionar.append(CommitOperationAdd(path_in_repo=f"{pasta}/{rel}/{arq.name}",
                                                     path_or_fileobj=str(arq)))
             continue
         nome = f"{tabela}_{ano}" + (f"_{mes}" if mes.isdigit() else "") + ".parquet"
@@ -474,20 +494,23 @@ def publicar_particoes(con, local_dir: Path, repo: str, tabela: str, consolidar:
                                              hive_partitioning = false, union_by_name = true))
             TO '{saida.as_posix()}' (FORMAT PARQUET, COMPRESSION 'ZSTD', COMPRESSION_LEVEL 3)
         """)
-        adicionar.append(CommitOperationAdd(path_in_repo=f"{tabela}/{rel}/{nome}", path_or_fileobj=str(saida)))
+        adicionar.append(CommitOperationAdd(path_in_repo=f"{pasta}/{rel}/{nome}", path_or_fileobj=str(saida)))
 
     novos = {op.path_in_repo for op in adicionar}
     apagar = [
         caminho for caminho in remotos
         if caminho not in novos and caminho.endswith(".parquet") and any(
-            caminho.startswith(f"{tabela}/ano_particao={a}/")
-            or (caminho.startswith(f"ano_particao={a}/") and caminho.rsplit("/", 1)[-1].startswith(f"{tabela}_"))
+            caminho.startswith(f"{pasta}/ano_particao={a}/")
+            # Os arquivos antigos na raiz (ver acima) só existem nos
+            # repositórios sem pasta de área.
+            or (pasta == tabela and caminho.startswith(f"ano_particao={a}/")
+                and caminho.rsplit("/", 1)[-1].startswith(f"{tabela}_"))
             for a in anos)
     ]
     operacoes = adicionar + [CommitOperationDelete(path_in_repo=c) for c in apagar]
     com_espera_no_limite(lambda: HfApi().create_commit(
         repo_id=repo, repo_type="dataset", operations=operacoes,
-        commit_message=f"{tabela}: ano(s) {', '.join(sorted(anos))} substituído(s) "
+        commit_message=f"{pasta}: ano(s) {', '.join(sorted(anos))} substituído(s) "
                        f"({len(adicionar)} arquivo(s), {len(apagar)} removido(s))"), tabela)
     _cache_listagem.pop(repo, None)
     print(f"   ☁️  {tabela}: {len(adicionar)} arquivo(s) publicado(s), {len(apagar)} arquivo(s) antigo(s) removido(s)")
@@ -499,10 +522,11 @@ def publicar_particoes(con, local_dir: Path, repo: str, tabela: str, consolidar:
     return len(adicionar)
 
 
-def publicar_cartao(repo: str, local: Path) -> bool:
+def publicar_cartao(repo: str, local: Path, caminho: str = "README.md") -> bool:
     """
-    Sobe o README (o cartão do conjunto no Hub) quando ele muda, e cria o
-    repositório na primeira vez. Devolve se publicou.
+    Sobe um README quando ele muda, e cria o repositório na primeira vez.
+    Devolve se publicou. `caminho` é onde ele fica no repositório: o da raiz é
+    o cartão do conjunto no Hub; o de uma pasta (`saude/README.md`), o da área.
     """
     from huggingface_hub import HfApi, hf_hub_download
 
@@ -510,14 +534,14 @@ def publicar_cartao(repo: str, local: Path) -> bool:
     api.create_repo(repo_id=repo, repo_type="dataset", exist_ok=True)
     novo = local.read_text(encoding="utf-8")
     try:
-        atual = Path(hf_hub_download(repo, "README.md", repo_type="dataset")).read_text(encoding="utf-8")
+        atual = Path(hf_hub_download(repo, caminho, repo_type="dataset")).read_text(encoding="utf-8")
     except Exception:
         atual = None
     if atual == novo:
         return False
     com_espera_no_limite(lambda: api.upload_file(
-        path_or_fileobj=novo.encode("utf-8"), path_in_repo="README.md", repo_id=repo,
-        repo_type="dataset", commit_message="cartão do conjunto"), "README.md")
+        path_or_fileobj=novo.encode("utf-8"), path_in_repo=caminho, repo_id=repo,
+        repo_type="dataset", commit_message=f"cartão: {caminho}"), caminho)
     return True
 
 

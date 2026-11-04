@@ -300,7 +300,8 @@ def construir(con, tabela: str, ano_inicio: int, ano_fim: int, completa: bool = 
         # Na completa, um arquivo por pedaço de origem: o ano inteiro num
         # arquivo só passaria de alguns GB.
         n_publicados = nuvem.publicar_particoes(con, destino_local, nuvem.repo_silver(tabela, completa),
-                                                tabela, consolidar=not completa)
+                                                tabela, consolidar=not completa,
+                                                pasta=nuvem.pasta_silver(tabela, completa))
 
     print(f"   📊 {feitos} gravado(s), {falhas} falha(s) "
           f"| {total_linhas:,} linhas em {(time.time() - inicio) / 60:.1f} min")

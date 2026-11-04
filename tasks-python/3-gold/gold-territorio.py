@@ -37,9 +37,11 @@ def _semear_geo_municipios() -> None:
     # Não depende da área: numa área nova, que ainda não o tem na gold dela,
     # vem da gold de referência (a do TCC).
     erro = None
-    for repo in dict.fromkeys((nuvem.REPO_GOLD, nuvem.REPO_GOLD_REFERENCIA)):
+    # Na gold de referência (a do TCC) o arquivo fica na raiz.
+    for repo, arquivo in ((nuvem.REPO_GOLD, nuvem.caminho_na_gold("geo_municipios.parquet")),
+                          (nuvem.REPO_GOLD_REFERENCIA, "geo_municipios.parquet")):
         try:
-            caminho = hf_hub_download(repo, "geo_municipios.parquet", repo_type="dataset")
+            caminho = hf_hub_download(repo, arquivo, repo_type="dataset")
             shutil.copy(caminho, nuvem.DIR_GOLD_LOCAL / "geo_municipios.parquet")
             print(f"✅ geo_municipios.parquet semeado (de {repo})")
             return

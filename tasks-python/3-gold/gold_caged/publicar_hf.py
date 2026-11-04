@@ -134,7 +134,7 @@ LEGADO = {f"{t}.parquet" for t in (*DESCRICAO_TABELA, "caged_ti")}
 # O unificado se chamava caged_ti_<ano> (herança do TCC, que era só de TI).
 # Numa publicação nova esses arquivos saem, no mesmo commit em que os
 # caged_unificado_<ano> entram: o repositório nunca fica com os dois.
-NOME_ANTIGO = re.compile(r"^caged_ti_\d{4}\.parquet$")
+NOME_ANTIGO = re.compile(rf"^{esc.AREA}/caged_ti_\d{{4}}\.parquet$")
 
 
 def _cartao_da_area(cartao: str) -> str:
@@ -292,7 +292,9 @@ def main() -> int:
     # baixar os dados sem ter lido o trabalho.
     cartao = DIR_DETALHADO / "README.md"
     cartao.write_text(
-        _cartao_da_area(CARTAO).replace("{repo}", args.repo)
+        # O exemplo de consulta aponta para a pasta da área no repositório.
+        _cartao_da_area(CARTAO).replace("{repo}/resolve/main", f"{args.repo}/resolve/main/{esc.AREA}")
+              .replace("{repo}", args.repo)
               .replace("{tabela_arquivos}", _tabela_de_arquivos(arquivos)),
         encoding="utf-8",
     )
@@ -307,7 +309,8 @@ def main() -> int:
     for arquivo in arquivos + [cartao]:
         tam = arquivo.stat().st_size
         print(f"   ⬆️  {arquivo.name:<25} {tam / 1e6:>7.1f} MB")
-        operacoes.append(CommitOperationAdd(path_in_repo=arquivo.name, path_or_fileobj=str(arquivo)))
+        # Na pasta da área: o repositório é de todas as áreas.
+        operacoes.append(CommitOperationAdd(path_in_repo=f"{esc.AREA}/{arquivo.name}", path_or_fileobj=str(arquivo)))
         total += tam
 
     # Um commit só, não um por arquivo: o Hub limita a taxa de commits por
@@ -321,7 +324,7 @@ def main() -> int:
         commit_message=f"Consolidados por ano: {len(arquivos)} arquivo(s)",
     )
 
-    base = f"https://huggingface.co/datasets/{args.repo}/resolve/main"
+    base = f"https://huggingface.co/datasets/{args.repo}/resolve/main/{esc.AREA}"
     print(f"\n🏁 {total / 1e6:.1f} MB publicados.")
     print("\nConfigure o dashboard com:")
     print(f"   DADOS_URL_BASE={base}")

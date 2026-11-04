@@ -277,7 +277,8 @@ def construir(con, tabela: str, ano_inicio: int, ano_fim: int, completa: bool = 
         print(f"   ⛔ {falhas} falha(s): nada publicado, o ano no Hub fica como estava")
         n_publicados = 0
     else:
-        n_publicados = nuvem.publicar_particoes(con, destino_local, nuvem.repo_silver(tabela, completa), tabela)
+        n_publicados = nuvem.publicar_particoes(con, destino_local, nuvem.repo_silver(tabela, completa), tabela,
+                                                pasta=nuvem.pasta_silver(tabela, completa))
 
     decorrido = time.time() - inicio
     print(f"   📊 {feitos} gravado(s), {falhas} falha(s) "
