@@ -412,7 +412,7 @@ def verificar_saltos(con, minimo: int = 5000, fator: int = 10) -> None:
     print(f"\n🔎 ocupações de TI que mudam {fator}x num município de um ano para o outro "
           f"(>= {minimo:,} vínculos): {len(saltos)}")
     for ano, mun, cod, antes, depois, tempo in saltos:
-        conhecido = (mun, cod) == (a["municipio"], a["cbo"])
+        conhecido = mun == a["municipio"] and cod in a["cbos"]
         marca = "conhecido, excluído" if conhecido else "⚠️ NOVO: investigar"
         casa = f", {tempo:.0f} meses de casa" if tempo is not None else ""
         print(f"   {ano}  município {mun}  CBO {cod}: {antes:,} -> {depois:,}{casa}  ({marca})")

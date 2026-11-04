@@ -254,15 +254,20 @@ def sql_saida_cbo(col_cnae: str | None, col_cbo: str) -> str:
 # Daí a regra por ano, e não por código: o grupo sai só no ano em que passa do
 # limiar. O limiar não precisa de ajuste fino: contando também os desligados,
 # o maior ano legítimo tem 195 registros e o menor ano do artefato, 44.185.
-ARTEFATO_RO = {"municipio": "110020", "natureza_juridica": "1023", "cbo": "317110"}
+# Os dois códigos que o estado alterna: 317110 pesa no TI, 721215 (operador de
+# máquinas-ferramenta, 2011-2017) pesaria na indústria. Cada código é medido
+# por si: num ano do 317110, os poucos operadores de máquina reais do estado
+# continuam.
+ARTEFATO_RO = {"municipio": "110020", "natureza_juridica": "1023", "cbos": ("317110", "721215")}
 LIMIAR_ARTEFATO = 1000
 
 
 def sql_grupo_artefato_ro(col_cbo: str = "cbo_ocupacao_2002") -> str:
-    """Predicado do grupo (município, natureza jurídica, CBO) do artefato."""
+    """Predicado do grupo (município, natureza jurídica, CBOs) do artefato."""
     a = ARTEFATO_RO
+    cbos = ", ".join(f"'{c}'" for c in a["cbos"])
     return (f"(municipio = '{a['municipio']}' AND natureza_juridica = '{a['natureza_juridica']}' "
-            f"AND {sql_codigo_cbo(col_cbo)} = '{a['cbo']}')")
+            f"AND {sql_codigo_cbo(col_cbo)} IN ({cbos}))")
 
 
 def sql_sem_artefato_rais(fonte: str, col_cbo: str = "cbo_ocupacao_2002") -> str:
@@ -274,9 +279,11 @@ def sql_sem_artefato_rais(fonte: str, col_cbo: str = "cbo_ocupacao_2002") -> str
     ano novo com o mesmo defeito sai sozinho, sem lista de anos para manter.
     """
     grupo = sql_grupo_artefato_ro(col_cbo)
-    return (f"NOT ({grupo} AND ano IN ("
-            f"SELECT ano FROM read_parquet({fonte}, union_by_name=true) "
-            f"WHERE {grupo} GROUP BY ano HAVING count(*) > {LIMIAR_ARTEFATO}))")
+    codigo = sql_codigo_cbo(col_cbo)
+    # Ano e código juntos: o limiar vale para cada código em cada ano.
+    return (f"NOT ({grupo} AND (ano::VARCHAR || '-' || {codigo}) IN ("
+            f"SELECT ano::VARCHAR || '-' || {codigo} FROM read_parquet({fonte}, union_by_name=true) "
+            f"WHERE {grupo} GROUP BY ano, {codigo} HAVING count(*) > {LIMIAR_ARTEFATO}))")
 
 
 def sql_classificacao(col_cnae: str = "subclasse",

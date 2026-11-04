@@ -10,7 +10,7 @@ on:
       area:
         description: "Área do recorte"
         type: choice
-        options: [tec, saude, educacao, engenharia, financas, agronegocio, comercio]
+        options: [tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
         required: true
   workflow_call:
     inputs:

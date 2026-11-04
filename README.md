@@ -1,10 +1,11 @@
 # Mercado de trabalho no Brasil, por área
 
 Pipeline de dados que recorta os microdados públicos da **RAIS** e do
-**CAGED** (Ministério do Trabalho e Emprego) por área de atuação — hoje
-**TI** (`tec`), **saúde** e **educação** — e publica cada área como dados
-abertos no Hugging Face. A área é escolhida ao iniciar o workflow no GitHub
-Actions.
+**CAGED** (Ministério do Trabalho e Emprego) por área de atuação — hoje nove:
+**TI** (`tec`), **saúde**, **educação**, **agronegócio**, **finanças**,
+**indústria e manufatura**, **construção civil**, **logística e transporte** e
+**comércio** — e publica cada área como dados abertos no Hugging Face. A área
+é escolhida ao iniciar o workflow no GitHub Actions.
 
 Nasceu do TCC *Análise, Visualização e Previsão do Mercado de Tecnologia no
 Brasil* (UTFPR), cujo código, dados validados e site continuam no repositório
@@ -43,7 +44,7 @@ Cada área é a união de duas lentes, definidas em
   CBO (o professor de uma empresa, o enfermeiro de uma indústria).
 
 O recorte é por código, nunca por palavra-chave na descrição. As listas de TI
-foram validadas no TCC; as de saúde e educação ainda precisam da mesma
+foram validadas no TCC; as das outras áreas ainda precisam da mesma
 verificação (o peso de cada família e o que ela arrasta de carona) antes de
 os números serem usados.
 

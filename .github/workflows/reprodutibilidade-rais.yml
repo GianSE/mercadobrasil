@@ -12,7 +12,7 @@ on:
       area:
         description: "Área do recorte"
         type: choice
-        options: [tec, saude, educacao, engenharia, financas, agronegocio, comercio]
+        options: [tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
         required: true
       anos:
         description: "Anos separados por espaço (vazio = 2007 a 2025)"
