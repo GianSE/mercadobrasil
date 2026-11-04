@@ -1,6 +1,7 @@
 import { base, eixo, Grafico, Legenda } from "../../components/Grafico";
 import { Indicador } from "../../components/Indicador";
 import { Painel } from "../../components/Painel";
+import { AneisRecorte } from "../../components/Recorte";
 import type { Area as TipoArea } from "../../lib/areas";
 import { useTabela, type Linha } from "../../lib/dados";
 import { fmt } from "../../lib/formato";
@@ -21,12 +22,12 @@ export function VisaoGeral({ area }: { area: TipoArea }) {
     <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <Indicador
         titulo={resumo ? `Vínculos ativos em 31/12/${resumo.ano}` : "Vínculos ativos"}
-        valor={resumo ? fmt.inteiro(resumo.estoque) : undefined}
+        valor={anual.tipo === "carregando" ? undefined : resumo ? fmt.inteiro(resumo.estoque) : "—"}
         variacao={resumo?.variacao}
       />
       <Indicador
         titulo="Fora do setor da área"
-        valor={resumo ? fmt.parte(resumo.foraDoSetor) : undefined}
+        valor={anual.tipo === "carregando" ? undefined : resumo ? fmt.parte(resumo.foraDoSetor) : "—"}
         nota={`dos profissionais de ${area.sigla} trabalham em outro setor`}
       />
       <Indicador
@@ -165,6 +166,10 @@ export function VisaoGeral({ area }: { area: TipoArea }) {
         </Painel>
       </div>
     </section>
+
+      <div className="mt-8">
+        <AneisRecorte area={area} />
+      </div>
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { BarChart, LineChart, MapChart, ScatterChart } from "echarts/charts";
+import { BarChart, LineChart, MapChart, ScatterChart, SunburstChart } from "echarts/charts";
 import { GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import * as echarts from "echarts/core";
 import type { EChartsCoreOption } from "echarts/core";
@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTema } from "../lib/tema";
 
 echarts.use([
-  LineChart, BarChart, MapChart, ScatterChart,
+  LineChart, BarChart, MapChart, ScatterChart, SunburstChart,
   GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, VisualMapComponent,
   CanvasRenderer,
 ]);
@@ -43,7 +43,8 @@ function lerTinta(): Tinta {
   const css = getComputedStyle(document.documentElement);
   const v = (nome: string) => css.getPropertyValue(nome).trim();
   return {
-    series: [1, 2, 3, 4, 5, 6].map((i) => v(`--chart-${i}`)),
+    // Sete cores validadas para daltonismo nos dois temas: uma por subárea, sem repetir.
+    series: [1, 2, 3, 4, 5, 6, 7].map((i) => v(`--chart-${i}`)),
     // A rampa azul da paleta validada. No escuro ela se inverte: o maior valor
     // é o que mais se destaca do fundo, e no escuro isso é o mais claro.
     sequencial: document.documentElement.classList.contains("dark")
@@ -107,9 +108,11 @@ type Props = {
   opcao: (t: Tinta) => EChartsCoreOption;
   altura?: number;
   rotulo: string;
+  /** Clique numa marca (fatia, ponto, linha): a página decide o que acontece. */
+  aoClicar?: (p: { name?: string; seriesName?: string; data?: unknown }) => void;
 };
 
-export function Grafico({ opcao, altura = 300, rotulo }: Props) {
+export function Grafico({ opcao, altura = 300, rotulo, aoClicar }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const grafico = useRef<echarts.ECharts | null>(null);
   const { tema } = useTema();
@@ -130,6 +133,15 @@ export function Grafico({ opcao, altura = 300, rotulo }: Props) {
   useEffect(() => {
     grafico.current?.setOption(opcao(lerTinta()), { notMerge: true });
   }, [opcao, tema]);
+
+  useEffect(() => {
+    const g = grafico.current;
+    if (!g || !aoClicar) return;
+    g.on("click", aoClicar);
+    return () => {
+      g.off("click", aoClicar);
+    };
+  }, [aoClicar]);
 
   return <div ref={ref} role="img" aria-label={rotulo} style={{ height: altura }} className="w-full" />;
 }

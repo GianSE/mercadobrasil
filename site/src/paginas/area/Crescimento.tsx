@@ -4,6 +4,7 @@ import { Grafico } from "../../components/Grafico";
 import { Indicador } from "../../components/Indicador";
 import { Painel } from "../../components/Painel";
 import { Titulo } from "../../components/Titulo";
+import { FichaRecorte } from "../../components/Recorte";
 import { Segmentado } from "../../components/ui/segmentado";
 import type { Area } from "../../lib/areas";
 import { useConsulta, type LinhaSQL } from "../../lib/db";
@@ -83,6 +84,7 @@ export function Crescimento({ area }: { area: Area }) {
       </section>
 
       <Fluxo area={area} periodo={periodo} />
+      <FichaRecorte area={area} />
       <Comparar area={area} periodo={periodo} />
     </div>
   );

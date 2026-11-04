@@ -68,11 +68,14 @@ export function opcaoLinhas(
   const formatoEixo = o.formatoEixo ?? fmt.compacto;
   // Área útil: a altura do cartão menos o eixo de baixo e a margem de cima.
   const deslocamento = o.rotuloFinal ? afastarRotulos(series, (o.altura ?? 300) - 50, o.zero) : [];
+  // Espaço para o nome no fim da linha, pelo nome mais longo (cerca de 6 px
+  // por letra), com teto: o que passar dele termina em reticências.
+  const margem = o.rotuloFinal ? Math.min(170, Math.max(48, 6 * Math.max(...series.map((s) => s.nome.length)) + 12)) : 16;
   let cor = 0;
   return {
     ...base(t),
     legend: { show: false },
-    grid: { left: 8, right: o.rotuloFinal ? 72 : 16, top: 12, bottom: 8, containLabel: true },
+    grid: { left: 8, right: margem, top: 12, bottom: 8, containLabel: true },
     tooltip: tooltipEixo(t, formato),
     xAxis: eixo(t, { type: "category", data: x, boundaryGap: false, splitLine: { show: false }, axisLabel: { color: t.rotulo, hideOverlap: true } }),
     yAxis: eixo(t, { type: "value", scale: !o.zero, axisLabel: { color: t.rotulo, formatter: (v: number) => formatoEixo(v) } }),
@@ -89,7 +92,7 @@ export function opcaoLinhas(
         itemStyle: { color: c, borderColor: t.fundo, borderWidth: 2 },
         areaStyle: s.area ? { color: c, opacity: 0.14 } : undefined,
         endLabel: o.rotuloFinal
-          ? { show: true, color: t.texto, fontSize: 11, offset: [0, deslocamento[i] ?? 0], formatter: () => s.nome }
+          ? { show: true, color: t.texto, fontSize: 11, offset: [0, deslocamento[i] ?? 0], width: margem - 10, overflow: "truncate", formatter: () => s.nome }
           : undefined,
         emphasis: { focus: "series" },
       };
@@ -307,6 +310,67 @@ export function opcaoRazaoChances(t: Tinta, itens: { rotulo: string; valor: numb
         })),
         symbolSize: 10,
         markLine: { silent: true, symbol: "none", data: [{ xAxis: 1 }], lineStyle: { color: t.rotulo, type: "dashed" }, label: { show: false } },
+      },
+    ],
+  };
+}
+
+// Mistura uma cor da paleta com o fundo do cartão: os anéis de dentro para
+// fora ficam no mesmo tom da subárea, cada vez mais claros (ou escuros, no
+// tema escuro), e a identidade continua sendo a do anel interno.
+function misturar(a: string, b: string, t: number): string {
+  const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [x, y] = [rgb(a), rgb(b)];
+  return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join("");
+}
+
+export type NoAnel = { id: string; nome: string; codigo?: string; valor: number; filhos?: NoAnel[] };
+
+/**
+ * Os anéis da hierarquia (sunburst): o primeiro nível no centro, as folhas na
+ * borda. A cor é a do nó do primeiro nível, na ordem fixa da paleta; os filhos
+ * herdam o tom, misturado com o fundo. O clique é da página (nodeClick
+ * desligado): o seletor, a trilha e o gráfico mostram sempre o mesmo nó.
+ */
+export function opcaoHierarquia(t: Tinta, raiz: NoAnel[], o: { unidade: string }): EChartsCoreOption {
+  const total = raiz.reduce((s, n) => s + n.valor, 0) || 1;
+  const converter = (n: NoAnel, cor: string, nivel: number): Record<string, unknown> => ({
+    id: n.id,
+    name: n.nome,
+    value: n.valor,
+    itemStyle: { color: cor },
+    children: n.filhos?.map((f, i) => converter(f, misturar(cor, t.fundo, Math.min(0.55, 0.22 * nivel + 0.06 * (i % 3))), nivel + 1)),
+  });
+  const rotulo = { color: t.texto, textBorderColor: t.fundo, textBorderWidth: 2, fontSize: 11 };
+  return {
+    textStyle: { fontFamily: "inherit" },
+    tooltip: {
+      ...(base(t).tooltip as object),
+      trigger: "item",
+      formatter: (p: { name: string; value: number; treePathInfo?: { name: string }[] }) => {
+        const caminho = (p.treePathInfo ?? []).map((x) => x.name).filter(Boolean);
+        return (
+          (caminho.length > 1 ? `<div style="font-size:11px;opacity:.7">${caminho.slice(0, -1).join(" › ")}</div>` : "") +
+          `<b>${p.name}</b><br/>${fmt.inteiro(p.value)} ${o.unidade} · ${((p.value / total) * 100).toFixed(1).replace(".", ",")}% do recorte`
+        );
+      },
+    },
+    series: [
+      {
+        type: "sunburst",
+        data: raiz.map((n, i) => converter(n, t.series[i % t.series.length], 1)),
+        radius: ["14%", "96%"],
+        sort: undefined,
+        nodeClick: false,
+        emphasis: { focus: "ancestor" },
+        itemStyle: { borderColor: t.fundo, borderWidth: 2 },
+        label: { ...rotulo, minAngle: 8, overflow: "truncate" },
+        levels: [
+          {},
+          { r0: "14%", r: "40%", label: { ...rotulo, rotate: 0, width: 96, overflow: "break" } },
+          { r0: "40%", r: "68%", label: { ...rotulo, rotate: "radial", width: 84 } },
+          { r0: "68%", r: "96%", label: { ...rotulo, rotate: "radial", width: 92, fontSize: 10 } },
+        ],
       },
     ],
   };

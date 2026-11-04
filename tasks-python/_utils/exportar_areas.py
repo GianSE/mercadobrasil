@@ -38,6 +38,10 @@ def _descrever(slug: str) -> dict:
         "resumo": a["resumo"],
         "repo": f"Gianpedro/gold-analise-mercado-{slug}",
         "subareas": list(a["subareas"]),
+        # Os nomes das famílias e dos códigos avulsos: o site monta com eles a
+        # árvore de ocupações (subárea → família → ocupação).
+        "familias": dict(a["cbo_familias"]),
+        "avulsos": dict(a["cbo_avulsos"]),
         "cnaes": len(a["cnae"]),
         "familias_cbo": len(a["cbo_familias"]),
         "rotulos": {
