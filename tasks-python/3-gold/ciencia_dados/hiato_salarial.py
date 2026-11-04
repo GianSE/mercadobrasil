@@ -72,6 +72,16 @@ ATIVO = "vinculo_ativo_3112 = '1'"
 # alguns registros a partir de 2023 (ver gold_rais.construir_gold).
 TETO_SM = 500
 
+# Acima disto, a decomposição de um ano usa uma amostra aleatória deste
+# tamanho. A matriz das regressões cresce com os vínculos (as categorias
+# viram dezenas de colunas) e cada uma das três regressões a copia: com os
+# 4,4 milhões de vínculos por ano de educação, passava da memória do runner
+# do Actions, que derrubava o job sem erro ("The operation was canceled").
+# Com 1,5 milhão, o erro amostral dos coeficientes fica muito abaixo das
+# casas decimais publicadas. TI (cerca de 1 milhão por ano, o recorte do TCC)
+# nunca é amostrada: os números dela não mudam.
+LIMITE_AMOSTRA = 1_500_000
+
 COVARIAVEIS = ["escolaridade", "area", "porte", "regiao", "setor"]
 NUMERICAS = ["tempo_emprego", "idade", "idade2", "horas"]
 
@@ -114,6 +124,17 @@ def carregar(ano: int, con=None) -> pd.DataFrame:
     # curvatura para dentro da parte não explicada.
     df["idade2"] = df["idade"] ** 2
     return df.dropna(subset=["ln_salario"] + NUMERICAS + COVARIAVEIS)
+
+
+def amostrar(df: pd.DataFrame, ano: int) -> tuple[pd.DataFrame, float]:
+    """
+    O ano inteiro, ou uma amostra de LIMITE_AMOSTRA vínculos quando passa
+    dele. A semente é o ano: a mesma gold reconstruída dá o mesmo resultado.
+    Devolve também a fração amostrada (1.0 = todos).
+    """
+    if len(df) <= LIMITE_AMOSTRA:
+        return df, 1.0
+    return df.sample(n=LIMITE_AMOSTRA, random_state=ano), LIMITE_AMOSTRA / len(df)
 
 
 def _desenho(df: pd.DataFrame) -> pd.DataFrame:
@@ -236,14 +257,19 @@ def serie(anos: range, con=None) -> pd.DataFrame:
     estrutura comum a 2007 e 2025 suporia que o retorno da escolaridade não
     mudou em duas décadas, que é justamente uma das coisas em teste.
     """
+    import gc
+
     con = con or conectar_duckdb()
     linhas = []
     for ano in anos:
         try:
-            df = carregar(ano, con)
+            completo = carregar(ano, con)
         except Exception as e:
             print(f"   ⚠️  {ano}: {str(e)[:70]}")
             continue
+        vinculos = len(completo)
+        df, fracao = amostrar(completo, ano)
+        del completo
         for dimensao, a, b in (("sexo", "Homem", "Mulher"),
                                ("raca", "Branca", "Parda"),
                                ("raca", "Branca", "Preta")):
@@ -253,7 +279,9 @@ def serie(anos: range, con=None) -> pd.DataFrame:
             linhas.append({
                 "ano": ano, "dimensao": dimensao,
                 "comparacao": f"{a} vs {b}",
+                # n_a e n_b contam a amostra; o total do ano é vinculos_ano.
                 "n_a": r["n_a"], "n_b": r["n_b"],
+                "vinculos_ano": vinculos, "fracao_amostra": fracao,
                 "salario_a": r["salario_a"], "salario_b": r["salario_b"],
                 "hiato_log": r["hiato_log"], "hiato_pct": r["hiato_pct"],
                 "explicada": r["explicada"],
@@ -266,7 +294,12 @@ def serie(anos: range, con=None) -> pd.DataFrame:
                 "explicada_share": (r["explicada"] / r["hiato_log"] * 100
                                     if abs(r["hiato_log"]) >= 0.02 else np.nan),
             })
-        print(f"   ✅ {ano}: {len(df):,} vínculos")
+        amostra = f" (amostra de {len(df):,}, {fracao:.0%})" if fracao < 1 else ""
+        print(f"   ✅ {ano}: {vinculos:,} vínculos{amostra}")
+        # Libera a matriz do ano antes de carregar o próximo: sem isso o pico
+        # de memória soma dois anos.
+        del df
+        gc.collect()
     return pd.DataFrame(linhas)
 
 
@@ -316,8 +349,11 @@ def main() -> int:
     print(f"  HIATO SALARIAL EM TECNOLOGIA — OAXACA-BLINDER, RAIS {args.ano}")
     print("=" * 78)
 
-    df = carregar(args.ano)
-    print(f"\n📊 {len(df):,} vínculos ativos com ocupação de TI e salário válido")
+    completo = carregar(args.ano)
+    df, fracao = amostrar(completo, args.ano)
+    amostra = f" (decomposição numa amostra de {len(df):,}, {fracao:.0%})" if fracao < 1 else ""
+    print(f"\n📊 {len(completo):,} vínculos ativos com ocupação de {esc.SIGLA} e salário válido{amostra}")
+    del completo
 
     pares = []
     if args.dimensao in ("sexo", "ambos"):
