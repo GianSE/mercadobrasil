@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Mercado de trabalho formal no Brasil por área de atuação, a partir da RAIS e do CAGED." />
+    <title>Mercado Brasil</title>
+    <script>
+      // Tema antes da pintura, para a página não piscar no claro.
+      try {
+        const salvo = localStorage.getItem("tema");
+        const escuro = salvo ? salvo === "escuro" : matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.classList.toggle("dark", escuro);
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

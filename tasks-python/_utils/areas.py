@@ -324,12 +324,15 @@ AREA_DOS_AVULSOS_SAUDE = {
 
 
 # --- REGISTRO ---------------------------------------------------------------
-# `sigla` e `estabelecimento` formam os rótulos que a gold grava: em TI
+# `resumo` é a frase da área na página inicial do site (ver
+# _utils/exportar_areas.py). `sigla` e `estabelecimento` formam os rótulos que
+# a gold grava: em TI
 # "Empresa de TI" e "Profissional de TI fora do setor de TI", em saúde
 # "Estabelecimento de saúde" e "Profissional de saúde fora do setor de saúde".
 AREAS = {
     "tec": {
         "nome": "TI",
+        "resumo": "Desenvolvimento, infraestrutura, dados e suporte, dentro e fora das empresas de tecnologia.",
         "sigla": "TI",
         "estabelecimento": "empresa de TI",
         "cnae": CNAE_TI,
@@ -342,6 +345,7 @@ AREAS = {
     },
     "educacao": {
         "nome": "Educação",
+        "resumo": "Professores da creche à pós-graduação, coordenação pedagógica e gestão escolar.",
         "sigla": "educação",
         "estabelecimento": "instituição de ensino",
         "cnae": CNAE_EDUCACAO,
@@ -354,6 +358,7 @@ AREAS = {
     },
     "saude": {
         "nome": "Saúde",
+        "resumo": "Medicina, enfermagem, odontologia, diagnóstico, reabilitação e atenção comunitária.",
         "sigla": "saúde",
         "estabelecimento": "estabelecimento de saúde",
         "cnae": CNAE_SAUDE,

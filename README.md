@@ -62,5 +62,25 @@ Para rodar local, copie `.env.example` para `.env` e instale
 
 ## Site
 
-`dashboards/` é o site do TCC, em refatoração para ler qualquer área. Ele não
-é publicado a partir deste repositório.
+`site/` é o painel novo (React, Tailwind e componentes no padrão shadcn/ui,
+gráficos em ECharts). A página inicial lista as áreas, e cada área tem a sua
+página. Os dados não entram no build: o site lê as tabelas da gold de cada
+área direto do Hugging Face, quando a página pede. Uma tabela que a área ainda
+não publicou aparece como aviso, sem quebrar a página.
+
+As áreas vêm de `tasks-python/_utils/areas.py`. Depois de mudar uma área,
+regenere a lista que o site lê:
+
+```bash
+cd site
+npm run areas   # escreve site/src/areas.json
+npm run dev
+```
+
+O site é publicado como um Cloudflare Worker só de arquivos estáticos
+(`site/wrangler.jsonc`), ligado a este repositório pelo Workers Builds:
+diretório raiz `site`, build `npm run build`, deploy `npx wrangler deploy`.
+Cada push na `main` publica. Para publicar do terminal: `npm run deploy`.
+
+`dashboards/` é o site antigo do TCC, mantido como referência até o novo
+cobrir tudo. Ele não é publicado a partir deste repositório.

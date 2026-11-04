@@ -1,0 +1,78 @@
+[
+  {
+    "slug": "tec",
+    "nome": "TI",
+    "sigla": "TI",
+    "resumo": "Desenvolvimento, infraestrutura, dados e suporte, dentro e fora das empresas de tecnologia.",
+    "repo": "Gianpedro/gold-analise-mercado-tec",
+    "subareas": [
+      "Desenvolvimento",
+      "Suporte e Operação",
+      "Infraestrutura e Dados",
+      "Engenharia e Pesquisa",
+      "Estatística e Ciência de Dados",
+      "Gestão e Direção"
+    ],
+    "cnaes": 10,
+    "familias_cbo": 9,
+    "rotulos": {
+      "setor_dentro": "Empresa de TI",
+      "setor_fora": "Fora do setor de TI",
+      "lente_dentro": "Profissional de TI em empresa de TI",
+      "lente_fora": "Profissional de TI fora do setor de TI",
+      "lente_so_setor": "Outra ocupação em empresa de TI",
+      "nao_area": "Outra ocupação (empresa de TI)"
+    }
+  },
+  {
+    "slug": "educacao",
+    "nome": "Educação",
+    "sigla": "educação",
+    "resumo": "Professores da creche à pós-graduação, coordenação pedagógica e gestão escolar.",
+    "repo": "Gianpedro/gold-analise-mercado-educacao",
+    "subareas": [
+      "Educação Básica",
+      "Educação Profissional",
+      "Ensino Superior",
+      "Cursos Livres",
+      "Coordenação e Apoio Pedagógico",
+      "Gestão Escolar"
+    ],
+    "cnaes": 23,
+    "familias_cbo": 25,
+    "rotulos": {
+      "setor_dentro": "Instituição de ensino",
+      "setor_fora": "Fora do setor de educação",
+      "lente_dentro": "Profissional de educação em instituição de ensino",
+      "lente_fora": "Profissional de educação fora do setor de educação",
+      "lente_so_setor": "Outra ocupação em instituição de ensino",
+      "nao_area": "Outra ocupação (instituição de ensino)"
+    }
+  },
+  {
+    "slug": "saude",
+    "nome": "Saúde",
+    "sigla": "saúde",
+    "resumo": "Medicina, enfermagem, odontologia, diagnóstico, reabilitação e atenção comunitária.",
+    "repo": "Gianpedro/gold-analise-mercado-saude",
+    "subareas": [
+      "Medicina",
+      "Enfermagem",
+      "Odontologia",
+      "Farmácia e Diagnóstico",
+      "Reabilitação e Terapias",
+      "Atenção Comunitária",
+      "Gestão em Saúde"
+    ],
+    "cnaes": 48,
+    "familias_cbo": 26,
+    "rotulos": {
+      "setor_dentro": "Estabelecimento de saúde",
+      "setor_fora": "Fora do setor de saúde",
+      "lente_dentro": "Profissional de saúde em estabelecimento de saúde",
+      "lente_fora": "Profissional de saúde fora do setor de saúde",
+      "lente_so_setor": "Outra ocupação em estabelecimento de saúde",
+      "nao_area": "Outra ocupação (estabelecimento de saúde)"
+    }
+  }
+]

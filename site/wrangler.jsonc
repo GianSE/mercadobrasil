@@ -1,0 +1,14 @@
+// Worker que serve o site: só arquivos estáticos por enquanto, sem código.
+// O nome tem de ser o mesmo do Worker criado no painel da Cloudflare, senão
+// o build ligado ao GitHub (Workers Builds) recusa o deploy.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mercadobrasil",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    // Rota que não é arquivo (/saude, /tec) devolve o index.html, e o
+    // roteador do React decide a página.
+    "not_found_handling": "single-page-application"
+  }
+}
