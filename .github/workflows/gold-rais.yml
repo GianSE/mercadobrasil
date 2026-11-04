@@ -1,4 +1,5 @@
 name: Gold RAIS por área
+run-name: "Gold RAIS · ${{ inputs.area }}"
 
 # Estoque de emprego da área escolhida, a partir de silver-rais-<área>.
 # Publica em Gianpedro/gold-analise-mercado-<área>. A área só troca as listas do recorte e os
@@ -30,6 +31,7 @@ env:
 
 jobs:
   reconstruir:
+    name: "Gold RAIS · ${{ inputs.area }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

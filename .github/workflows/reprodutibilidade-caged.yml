@@ -1,4 +1,5 @@
 name: Reprodutibilidade CAGED por área
+run-name: "Reprodutibilidade CAGED · ${{ inputs.area }}"
 
 # Conta o recorte da área no microdado bruto (bronze-caged), por tabela e
 # ano, e compara com silver-caged-<área>. Como a silver da área sai da
@@ -25,6 +26,7 @@ env:
 
 jobs:
   verificar:
+    name: "Recontagem · ${{ inputs.area }}"
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:

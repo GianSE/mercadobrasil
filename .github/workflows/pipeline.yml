@@ -1,4 +1,5 @@
 name: Pipeline por área (orquestrador)
+run-name: "Pipeline · ${{ inputs.area }} · desde ${{ inputs.comecar_em }}"
 
 # A fila inteira para a área escolhida (tec, saúde, educação). Só manual:
 # a área é escolhida ao iniciar.
@@ -46,6 +47,7 @@ on:
 
 jobs:
   decidir:
+    name: "Decidir camadas · ${{ inputs.area }}"
     runs-on: ubuntu-latest
     outputs:
       bronze: ${{ steps.calc.outputs.bronze }}

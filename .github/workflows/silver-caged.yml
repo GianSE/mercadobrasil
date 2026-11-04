@@ -1,4 +1,5 @@
 name: Silver CAGED por área
+run-name: "Silver CAGED · ${{ inputs.area }}"
 
 # A silver da área escolhida, em Gianpedro/silver-caged-<área>: recorte da
 # silver completa (Gianpedro/silver-caged, já traduzida), sem ler a bronze
@@ -43,6 +44,7 @@ env:
 
 jobs:
   verificar:
+    name: "Verificar · ${{ inputs.area }}"
     runs-on: ubuntu-latest
     outputs:
       tem_novidade: ${{ steps.chk.outputs.tem_novidade }}
@@ -64,6 +66,7 @@ jobs:
           python silver-area.py --base caged --modo verificar --ano-inicio "${ANO_INICIO:-2007}" --ano-fim "${ANO_FIM:-9999}" ${{ inputs.forcar && '--forcar' || '' }}
 
   processar:
+    name: "${{ inputs.area }} · ${{ matrix.item.tabela }} ${{ matrix.item.ano }}"
     needs: verificar
     if: needs.verificar.outputs.tem_novidade == 'true'
     runs-on: ubuntu-latest

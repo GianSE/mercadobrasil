@@ -1,4 +1,5 @@
 name: Gold CAGED consolidado por área
+run-name: "Gold CAGED consolidado · ${{ inputs.area }}"
 
 # Um parquet por tabela e por ano, mais o CAGED unificado e os cubos, a
 # partir de silver-caged-<área>. Publica o espelho no repositório da silver
@@ -30,6 +31,7 @@ env:
 
 jobs:
   reconstruir:
+    name: "Gold CAGED consolidado · ${{ inputs.area }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

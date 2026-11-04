@@ -5,11 +5,28 @@ cada workflow do Actions.
 Uso:
     from _utils.telegram import notificar
     notificar("🏁 Bronze CAGED concluído")
+
+Com a variável AREA no ambiente (os workflows por área a passam), toda
+mensagem sai com o nome da área na frente: dá para saber de qual área é um
+aviso de falha sem abrir o log.
 """
 import json
 import os
 import re
 import urllib.request
+
+
+def _com_area(mensagem: str) -> str:
+    """Põe o nome da área na frente da mensagem; sem AREA (bronze, silver completa), nada muda."""
+    slug = (os.getenv("AREA") or "").strip().lower()
+    if not slug:
+        return mensagem
+    from _utils.areas import AREAS
+
+    # Um slug desconhecido aparece como veio: o aviso é justamente para
+    # descobrir o que deu errado, não para falhar de novo aqui.
+    nome = AREAS.get(slug, {}).get("nome", slug)
+    return f"*{nome}* · {mensagem}"
 
 
 def notificar(mensagem: str) -> bool:
@@ -22,6 +39,8 @@ def notificar(mensagem: str) -> bool:
     if not token or not chat_id:
         print("   (Telegram não configurado — pulando notificação)")
         return False
+
+    mensagem = _com_area(mensagem)
 
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     # No Markdown do Telegram, o "_" de "caged_mov" abre um itálico que nunca

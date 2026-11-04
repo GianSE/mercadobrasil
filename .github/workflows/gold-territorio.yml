@@ -1,4 +1,5 @@
 name: Gold território por área
+run-name: "Gold território · ${{ inputs.area }}"
 
 # Mapa (RAIS + CAGED) e perfis de município da área escolhida, a partir das
 # silvers da área.
@@ -29,6 +30,7 @@ env:
 
 jobs:
   reconstruir:
+    name: "Gold território · ${{ inputs.area }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

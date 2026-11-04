@@ -1,4 +1,5 @@
 name: Reprodutibilidade RAIS por área
+run-name: "Reprodutibilidade RAIS · ${{ inputs.area }}"
 
 # Conta o recorte da área no microdado bruto (bronze-rais), ano a ano, e
 # compara com silver-rais-<área>. Como a silver da área sai da silver
@@ -24,6 +25,7 @@ env:
 
 jobs:
   verificar:
+    name: "Recontagem · ${{ inputs.area }}"
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:

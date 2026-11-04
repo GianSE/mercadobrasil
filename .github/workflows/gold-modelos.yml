@@ -1,4 +1,5 @@
 name: Gold modelos por área
+run-name: "Gold modelos · ${{ inputs.area }}"
 
 # Previsão, nowcast, hiato salarial e sobrevivência de vínculo da área
 # escolhida. Depende de gold-rais.yml da mesma área: o nowcast lê
@@ -30,6 +31,7 @@ env:
 
 jobs:
   reconstruir:
+    name: "Gold modelos · ${{ inputs.area }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
