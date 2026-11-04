@@ -4,7 +4,7 @@
     "nome": "TI",
     "sigla": "TI",
     "resumo": "Desenvolvimento, infraestrutura, dados e suporte, dentro e fora das empresas de tecnologia.",
-    "repo": "Gianpedro/gold-analise-mercado-tec",
+    "repo": "Gianpedro/gold-mercado-brasil/tec",
     "subareas": [
       "Desenvolvimento",
       "Suporte e Operação",
@@ -45,7 +45,7 @@
     "nome": "Saúde",
     "sigla": "saúde",
     "resumo": "Medicina, enfermagem, odontologia, diagnóstico, reabilitação e atenção comunitária.",
-    "repo": "Gianpedro/gold-analise-mercado-saude",
+    "repo": "Gianpedro/gold-mercado-brasil/saude",
     "subareas": [
       "Medicina",
       "Enfermagem",
@@ -105,7 +105,7 @@
     "nome": "Educação",
     "sigla": "educação",
     "resumo": "Professores da creche à pós-graduação, coordenação pedagógica e gestão escolar.",
-    "repo": "Gianpedro/gold-analise-mercado-educacao",
+    "repo": "Gianpedro/gold-mercado-brasil/educacao",
     "subareas": [
       "Educação Básica",
       "Educação Profissional",
@@ -158,7 +158,7 @@
     "nome": "Agronegócio",
     "sigla": "agronegócio",
     "resumo": "Lavoura, pecuária, floresta e pesca, da produção à mecanização e à ciência agrária.",
-    "repo": "Gianpedro/gold-analise-mercado-agronegocio",
+    "repo": "Gianpedro/gold-mercado-brasil/agronegocio",
     "subareas": [
       "Produtores Rurais",
       "Lavoura",
@@ -240,7 +240,7 @@
     "nome": "Finanças",
     "sigla": "finanças",
     "resumo": "Bancos, crédito, investimentos, seguros, contabilidade e economia.",
-    "repo": "Gianpedro/gold-analise-mercado-financas",
+    "repo": "Gianpedro/gold-mercado-brasil/financas",
     "subareas": [
       "Bancos e Crédito",
       "Investimentos e Relacionamento",
@@ -277,7 +277,7 @@
     "nome": "Indústria e Manufatura",
     "sigla": "indústria",
     "resumo": "Metalmecânica, alimentos, têxtil, química, eletroeletrônica e a linha de produção da indústria de transformação.",
-    "repo": "Gianpedro/gold-analise-mercado-industria",
+    "repo": "Gianpedro/gold-mercado-brasil/industria",
     "subareas": [
       "Metalmecânica e Eletroeletrônica",
       "Têxtil, Vestuário e Gráfica",
@@ -462,7 +462,7 @@
     "nome": "Construção Civil",
     "sigla": "construção civil",
     "resumo": "Pedreiros, carpinteiros, instaladores, acabamento e a engenharia de obra.",
-    "repo": "Gianpedro/gold-analise-mercado-construcao",
+    "repo": "Gianpedro/gold-mercado-brasil/construcao",
     "subareas": [
       "Obra e Estrutura",
       "Instalações",
@@ -510,7 +510,7 @@
     "nome": "Logística e Transporte",
     "sigla": "logística",
     "resumo": "Motoristas, armazenagem, movimentação de carga, correios, aéreo e aquaviário.",
-    "repo": "Gianpedro/gold-analise-mercado-logistica",
+    "repo": "Gianpedro/gold-mercado-brasil/logistica",
     "subareas": [
       "Transporte de Cargas",
       "Transporte de Passageiros",
@@ -561,7 +561,7 @@
     "nome": "Comércio",
     "sigla": "comércio",
     "resumo": "Vendedores, caixas, compradores e gestão comercial no varejo e no atacado.",
-    "repo": "Gianpedro/gold-analise-mercado-comercio",
+    "repo": "Gianpedro/gold-mercado-brasil/comercio",
     "subareas": [
       "Vendas no Varejo e Atacado",
       "Caixas e Atendimento",
@@ -598,7 +598,7 @@
     "nome": "Engenharia",
     "sigla": "engenharia",
     "resumo": "A profissão inteira, em qualquer setor: engenheiros de todas as especialidades, arquitetos e técnicos.",
-    "repo": "Gianpedro/gold-analise-mercado-engenharia",
+    "repo": "Gianpedro/gold-mercado-brasil/engenharia",
     "subareas": [
       "Civil e Arquitetura",
       "Elétrica e Eletrônica",

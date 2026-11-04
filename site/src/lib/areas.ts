@@ -12,6 +12,7 @@ export type Area = {
   nome: string;
   sigla: string;
   resumo: string;
+  /** a gold da área: "usuário/repositório/pasta" (gold-mercado-brasil/<slug>) */
   repo: string;
   subareas: string[];
   /** família CBO (4 dígitos) -> nome */
