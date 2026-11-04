@@ -11,5 +11,10 @@ export const fmt = {
   /** 0.39 -> "39,0%" */
   parte: (v: number) => `${decimal.format(v * 100)}%`,
   sm: (n: number) => `${sm.format(n)} SM`,
+  /** saldo: 12345 -> "+12.345" */
+  sinal: (n: number) => `${n > 0 ? "+" : ""}${inteiro.format(Math.round(n))}`,
+  /** 4.23 (já em %) -> "+4,2%" */
+  pontos: (v: number, casas = 1) =>
+    `${v > 0 ? "+" : ""}${v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas })}%`,
   data: (d: Date) => d.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" }),
 };

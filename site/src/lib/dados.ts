@@ -54,21 +54,28 @@ function normalizar(linha: Linha): Linha {
 }
 
 /**
- * Uma tabela inteira da gold. As tabelas são agregados pequenos (poucos KB a
- * 1 MB), então vem o arquivo todo. null quando a área ainda não publicou a
+ * O arquivo Parquet de uma tabela da gold, inteiro. As tabelas são agregados
+ * pequenos (poucos KB a 1 MB). null quando a área ainda não publicou a
  * tabela — o que é normal: cada etapa da gold roda separada.
  */
+export async function baixarTabela(repo: string, nome: string): Promise<ArrayBuffer | null> {
+  const info = await infoGold(repo);
+  if (!info.tabelas.has(nome)) return null;
+  // Pela revisão, não por "main": o endereço não muda enquanto a gold não for
+  // republicada, e o cache do navegador pode guardá-lo.
+  const r = await fetch(`${BASE}/datasets/${repo}/resolve/${info.sha}/${nome}.parquet`, SEM_REFERER);
+  if (!r.ok) throw new Error(`${nome}: HTTP ${r.status}`);
+  return r.arrayBuffer();
+}
+
+/** Uma tabela inteira da gold já como linhas, sem SQL: para as leituras simples. */
 export function lerTabela(repo: string, nome: string): Promise<Linha[] | null> {
   const chave = `${repo}/${nome}`;
   let tabela = tabelas.get(chave);
   if (!tabela) {
-    tabela = infoGold(repo).then(async (info) => {
-      if (!info.tabelas.has(nome)) return null;
-      // Pela revisão, não por "main": o endereço não muda enquanto a gold
-      // não for republicada, e o cache do navegador pode guardá-lo.
-      const r = await fetch(`${BASE}/datasets/${repo}/resolve/${info.sha}/${nome}.parquet`, SEM_REFERER);
-      if (!r.ok) throw new Error(`${nome}: HTTP ${r.status}`);
-      const linhas = (await parquetReadObjects({ file: await r.arrayBuffer(), compressors })) as Linha[];
+    tabela = baixarTabela(repo, nome).then(async (arquivo) => {
+      if (!arquivo) return null;
+      const linhas = (await parquetReadObjects({ file: arquivo, compressors })) as Linha[];
       return linhas.map(normalizar);
     });
     tabela.catch(() => tabelas.delete(chave));

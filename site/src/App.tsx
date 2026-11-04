@@ -23,7 +23,7 @@ export function App() {
           <Suspense>
             <Switch>
               <Route path="/" component={Inicio} />
-              <Route path="/:slug">{(p) => <Area slug={p.slug} />}</Route>
+              <Route path="/:slug/:secao?">{(p) => <Area slug={p.slug} secao={p.secao} />}</Route>
             </Switch>
           </Suspense>
         </div>
