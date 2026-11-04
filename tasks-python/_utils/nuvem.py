@@ -283,6 +283,29 @@ def com_espera_no_limite(acao, descricao: str):
                 raise
 
 
+def com_espera_na_leitura(acao, descricao: str):
+    """
+    O mesmo que com_espera_no_limite, para LEITURAS do DuckDB (hf:// e
+    resolve/...). O DuckDB já tenta de novo sozinho (aplicar_secret_hf: seis
+    vezes, uns 8 minutos), mas com muitos jobs lendo o mesmo repositório ao
+    mesmo tempo — várias áreas recortando a silver completa juntas — o limite
+    do Hub fica saturado por mais tempo que isso, e o ano inteiro se perdia
+    num 429. Aqui a leitura toda é refeita depois de esperas longas.
+    """
+    for tentativa, espera in enumerate((0, *ESPERAS_LIMITE_HUB)):
+        if espera:
+            print(f"      ⏳ limite de leitura do Hub (429) em {descricao}: "
+                  f"nova tentativa em {espera // 60} min ({tentativa}/{len(ESPERAS_LIMITE_HUB)})", flush=True)
+            time.sleep(espera)
+        try:
+            return acao()
+        except Exception as e:
+            texto = str(e)
+            limite = "429" in texto or "Too Many Requests" in texto
+            if not limite or tentativa == len(ESPERAS_LIMITE_HUB):
+                raise
+
+
 def publicar_arquivo(local: Path, repo: str, caminho_repo: str, privado: bool = False) -> None:
     from huggingface_hub import HfApi
 

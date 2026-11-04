@@ -172,7 +172,8 @@ def recortar(con, tabela: str, ano: int) -> bool:
                                 f"{tabela}/ano_particao={ano}/**/*.parquet")
     leitura = f"read_parquet({fonte}, union_by_name = true, hive_partitioning = true)"
     try:
-        colunas = [r[0] for r in con.execute(f"DESCRIBE SELECT * FROM {leitura}").fetchall()]
+        colunas = nuvem.com_espera_na_leitura(
+            lambda: [r[0] for r in con.execute(f"DESCRIBE SELECT * FROM {leitura}").fetchall()], f"{tabela} {ano}")
     except Exception as e:
         if "No files found" in str(e):
             print(f"   ⏭️  {tabela} {ano}: não está na silver completa")
@@ -199,12 +200,20 @@ def recortar(con, tabela: str, ano: int) -> bool:
     destino.mkdir(parents=True, exist_ok=True)
 
     print(f"   ✂️  {tabela} {ano}: lentes {col_cnae or '—'} / {col_cbo or '—'}")
-    con.execute(f"""
-        COPY (SELECT * FROM {leitura} WHERE {filtro})
-        TO '{destino.as_posix()}' (FORMAT PARQUET, COMPRESSION 'ZSTD', COMPRESSION_LEVEL 3,
-                                    PARTITION_BY ({', '.join(particao)}), OVERWRITE_OR_IGNORE,
-                                    FILENAME_PATTERN '{tabela}_{{uuid}}')
-    """)
+
+    def copiar():
+        # Recomeça do zero a cada tentativa: um COPY interrompido deixa
+        # pedaços que somariam em dobro com os da tentativa seguinte.
+        shutil.rmtree(destino, ignore_errors=True)
+        destino.mkdir(parents=True, exist_ok=True)
+        con.execute(f"""
+            COPY (SELECT * FROM {leitura} WHERE {filtro})
+            TO '{destino.as_posix()}' (FORMAT PARQUET, COMPRESSION 'ZSTD', COMPRESSION_LEVEL 3,
+                                        PARTITION_BY ({', '.join(particao)}), OVERWRITE_OR_IGNORE,
+                                        FILENAME_PATTERN '{tabela}_{{uuid}}')
+        """)
+
+    nuvem.com_espera_na_leitura(copiar, f"{tabela} {ano}")
     # Conferência pelo que FOI escrito: só o count(*) do destino prova que
     # saiu legível. Zero linhas é resultado válido (o COPY não cria arquivo).
     try:
