@@ -13,6 +13,11 @@ const compressors = { ZSTD: (entrada: Uint8Array) => decompress(entrada) };
  */
 const BASE = (import.meta.env.VITE_DADOS_BASE as string | undefined) ?? "https://huggingface.co";
 
+// O Hub responde 404 a toda requisição com Referer de *.workers.dev (o
+// endereço do site), na API e nos arquivos; sem Referer, a mesma requisição
+// passa. A origem continua indo, que é o que o CORS precisa.
+const SEM_REFERER: RequestInit = { referrerPolicy: "no-referrer" };
+
 export type Linha = Record<string, unknown>;
 
 type InfoGold = { sha: string; atualizado: Date; tabelas: Set<string> };
@@ -24,7 +29,7 @@ const tabelas = new Map<string, Promise<Linha[] | null>>();
 export function infoGold(repo: string): Promise<InfoGold> {
   let info = infos.get(repo);
   if (!info) {
-    info = fetch(`${BASE}/api/datasets/${repo}`)
+    info = fetch(`${BASE}/api/datasets/${repo}`, SEM_REFERER)
       .then((r) => {
         if (!r.ok) throw new Error(`${repo}: HTTP ${r.status}`);
         return r.json();
@@ -61,7 +66,7 @@ export function lerTabela(repo: string, nome: string): Promise<Linha[] | null> {
       if (!info.tabelas.has(nome)) return null;
       // Pela revisão, não por "main": o endereço não muda enquanto a gold
       // não for republicada, e o cache do navegador pode guardá-lo.
-      const r = await fetch(`${BASE}/datasets/${repo}/resolve/${info.sha}/${nome}.parquet`);
+      const r = await fetch(`${BASE}/datasets/${repo}/resolve/${info.sha}/${nome}.parquet`, SEM_REFERER);
       if (!r.ok) throw new Error(`${nome}: HTTP ${r.status}`);
       const linhas = (await parquetReadObjects({ file: await r.arrayBuffer(), compressors })) as Linha[];
       return linhas.map(normalizar);
