@@ -71,6 +71,9 @@ def _publicar_cubos() -> int:
         return 1
 
     api = HfApi(token=_credencial())
+    # Numa área nova este é o primeiro job a escrever na Gold dela (gold-rais e
+    # os outros podem rodar depois), e o commit não cria o repositório sozinho.
+    api.create_repo(repo_id=nuvem.REPO_GOLD, repo_type="dataset", exist_ok=True)
     operacoes = [CommitOperationAdd(path_in_repo=f"{n}.parquet", path_or_fileobj=str(cubos.DIR_SAIDA / f"{n}.parquet")) for n in nomes]
     api.create_commit(repo_id=nuvem.REPO_GOLD, repo_type="dataset", operations=operacoes,
                       commit_message="cubos do CAGED para o site")
