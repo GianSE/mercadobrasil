@@ -9,8 +9,10 @@ pelo rais_estoque_anual).
 Independente das outras partes da gold: só depende de silver-rais-ti.
 
 Uso:
-    python gold-rais.py
+    python gold-rais.py               # todos os anos
+    python gold-rais.py --anos recentes   # só os anos novos (Pipeline · RAIS)
 """
+import argparse
 import sys
 from pathlib import Path
 
@@ -24,10 +26,18 @@ log.ativar_horario()
 
 
 def main() -> int:
+    p = argparse.ArgumentParser(description="Gold RAIS da área.")
+    p.add_argument("--anos", choices=("todos", "recentes"), default="todos",
+                   help="recentes: só os anos novos da RAIS, mesclados com a gold publicada")
+    anos = p.parse_args().anos
+    # A medição de volume e a publicação, chamadas abaixo, leem os próprios
+    # argumentos de sys.argv.
+    sys.argv = sys.argv[:1]
+
     from gold_rais import construir_gold as gr
     from gold_unificado import publicar_gold, volume
 
-    codigo = gr.main()
+    codigo = gr.main(["--anos", anos])
     if codigo != 0:
         telegram.notificar("⚠️ *Gold RAIS*: concluído com falha, publicação pulada.")
         return codigo

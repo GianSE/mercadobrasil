@@ -51,7 +51,10 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Gold modelos da área.")
     p.add_argument("--base", choices=("caged", "rais", "ambas"), default="ambas",
                    help="caged: previsão e nowcast (fila mensal); rais: hiato e sobrevivência (fila anual).")
-    base = p.parse_args().base
+    p.add_argument("--anos", choices=("todos", "recentes"), default="todos",
+                   help="recentes: o hiato só nos anos novos da RAIS, somado à série publicada")
+    args = p.parse_args()
+    base = args.base
     # A publicação, chamada abaixo, lê os próprios argumentos de sys.argv.
     sys.argv = sys.argv[:1]
 
@@ -61,7 +64,7 @@ def main() -> int:
 
     from ciencia_dados import materializar
 
-    codigo = materializar.main(["--base", base])
+    codigo = materializar.main(["--base", base, "--anos", args.anos])
     if codigo != 0:
         telegram.notificar("⚠️ *Gold modelos*: concluído com falha, publicação pulada.")
         return codigo

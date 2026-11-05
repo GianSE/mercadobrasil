@@ -36,6 +36,7 @@ import argparse
 import sys
 import time
 import warnings
+from pathlib import Path
 
 import pandas as pd
 
@@ -152,6 +153,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--pular", nargs="*", default=[], choices=list(ETAPAS) + ["hiato"])
     p.add_argument("--ano-sobrevivencia", type=int, default=None,
                    help="Vazio = o ano mais recente da RAIS.")
+    p.add_argument("--anos", choices=("todos", "recentes"), default="todos",
+                   help="recentes: o hiato só nos anos novos da RAIS, somado à série publicada")
     args = p.parse_args(argv)
     # Os modelos da outra base ficam como estão na gold publicada.
     args.pular += [e for e, b in BASE_DA_ETAPA.items() if args.base not in ("ambas", b)]
@@ -193,12 +196,25 @@ def main(argv: list[str] | None = None) -> int:
             print(f"   ❌ falhou: {str(e)[:200]}")
 
     if "hiato" not in args.pular:
-        print(f"\n🔨 hiato (série completa — o mais demorado)")
         inicio = time.time()
         try:
             from ciencia_dados import hiato_salarial as hs
+            from _utils import incremental
 
-            tabela = hs.serie(range(2007, ultimo_rais + 1), con)
+            # Cada ano é ajustado do zero, com os próprios coeficientes (ver
+            # hiato_salarial.serie): os anos já publicados não mudam com um
+            # ano novo, então basta calcular o novo e somar à série.
+            ano_inicio, publicado = (incremental.ano_inicio_rais(con, "hiato_serie")
+                                     if args.anos == "recentes" else (0, None))
+            if publicado:
+                print(f"\n🔨 hiato ({ano_inicio} em diante; os anos anteriores vêm da gold publicada)")
+                antigos = con.execute(f"SELECT * FROM read_parquet('{Path(publicado).as_posix()}') "
+                                      f"WHERE ano < {ano_inicio} ORDER BY ano").df()
+                novos = hs.serie(range(ano_inicio, ultimo_rais + 1), con)
+                tabela = pd.concat([antigos, novos], ignore_index=True)
+            else:
+                print("\n🔨 hiato (série completa — o mais demorado)")
+                tabela = hs.serie(range(2007, ultimo_rais + 1), con)
             if not tabela.empty:
                 total += 1
                 print(f"   ✅ hiato_serie: {_gravar(con, tabela, 'hiato_serie'):,} linha(s)")

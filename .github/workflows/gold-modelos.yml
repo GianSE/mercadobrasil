@@ -19,6 +19,11 @@ on:
         type: choice
         options: [ambas, caged, rais]
         default: ambas
+      anos:
+        description: "recentes = o hiato só nos anos novos da RAIS, somado à série publicada; todos = refaz tudo"
+        type: choice
+        options: [todos, recentes]
+        default: todos
   workflow_call:
     inputs:
       area:
@@ -27,6 +32,9 @@ on:
       base:
         type: string
         default: ambas
+      anos:
+        type: string
+        default: todos
 
 env:
   AREA: ${{ inputs.area }}
@@ -56,4 +64,4 @@ jobs:
 
       - name: Materializa os modelos (previsão, nowcast, hiato, sobrevivência)
         working-directory: tasks-python/3-gold
-        run: python gold-modelos.py --base ${{ inputs.base || 'ambas' }}
+        run: python gold-modelos.py --base ${{ inputs.base || 'ambas' }} --anos ${{ inputs.anos || 'todos' }}

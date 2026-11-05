@@ -4,9 +4,9 @@ name: Uso interno · Gold RAIS de uma área
 # por vez). A silver da área já foi recortada antes, junto com a das outras
 # áreas (silver-areas.yml). Aqui só a gold da RAIS:
 #
-#   gold-rais                     (estoque, perfil, salários)
-#   gold-territorio --base rais   (o estoque; o fluxo vem da gold)
-#   gold-modelos --base rais      (hiato e sobrevivência)
+#   gold-rais                     (estoque, perfil, salários: só os anos novos)
+#   gold-territorio --base rais   (o estoque dos anos novos; o resto vem da gold)
+#   gold-modelos --base rais      (hiato dos anos novos e sobrevivência)
 #
 # Nada aqui lê o CAGED. O nowcast, que junta o estoque da RAIS com os meses do
 # CAGED, é refeito pelo Pipeline · CAGED na semana seguinte.
@@ -17,12 +17,17 @@ on:
       area:
         type: string
         required: true
+      anos_gold:
+        description: "recentes (só os anos novos, mesclados com a gold publicada) ou todos"
+        type: string
+        default: recentes
 
 jobs:
   gold-rais:
     uses: ./.github/workflows/gold-rais.yml
     with:
       area: ${{ inputs.area }}
+      anos: ${{ inputs.anos_gold }}
     secrets: inherit
 
   gold-territorio:
@@ -30,6 +35,7 @@ jobs:
     with:
       area: ${{ inputs.area }}
       base: rais
+      anos: ${{ inputs.anos_gold }}
     secrets: inherit
 
   gold-modelos:
@@ -37,4 +43,5 @@ jobs:
     with:
       area: ${{ inputs.area }}
       base: rais
+      anos: ${{ inputs.anos_gold }}
     secrets: inherit

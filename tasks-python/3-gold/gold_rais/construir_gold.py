@@ -42,20 +42,51 @@ descrição já vem prefixada com a sigla ('Df-Brasilia', 'Mt-Sinop'), então a 
 sai do prefixo. É mais direto que carregar uma tabela de-para de município só
 para recuperar informação que já está no texto.
 
+Incremental (`--anos recentes`): toda tabela daqui tem o ano no grão, então
+refaz só os anos novos e mescla com a tabela publicada (ver
+_utils/incremental.py). Sem tabela publicada, refaz tudo.
+
 Uso:
     python -m gold_rais.construir_gold
+    python -m gold_rais.construir_gold --anos recentes
     python -m gold_rais.construir_gold --tabela rais_estoque_anual
 """
 import argparse
+import re
 import sys
 import time
 
-from _utils import nuvem
+from _utils import incremental, nuvem
 from _utils import escopo_tecnologia as esc
 from gold_unificado.dicionario_canonico import sql_canonico
 
-FONTE_VINC = nuvem.fonte_silver_ti("rais_vinc")
-FONTE_ESTAB = nuvem.fonte_silver_ti("rais_estab")
+# Marcadores, e não a lista de arquivos: a lista depende de quais anos esta
+# rodada refaz (todos, um, ou a partir de um), e montá-la aqui, ao carregar o
+# módulo, baixaria a silver inteira com a cópia local ligada — mesmo para
+# refazer um ano só. _resolver troca o marcador pela lista na hora de rodar.
+FONTE_VINC = "__FONTE_VINC__"
+FONTE_ESTAB = "__FONTE_ESTAB__"
+
+
+def _resolver(sql: str, ano: int | None = None, ano_inicio: int = 0) -> str:
+    """Troca os marcadores pelos arquivos da silver: de um ano, a partir de um ano, ou todos."""
+    for marcador, tabela in ((FONTE_VINC, "rais_vinc"), (FONTE_ESTAB, "rais_estab")):
+        if marcador not in sql:
+            continue  # sem listar (nem baixar) a tabela que a consulta não usa
+        if ano is not None:
+            fonte = nuvem.fonte_silver_ti(tabela, f"ano_particao={ano}/**/*.parquet")
+        elif ano_inicio:
+            fonte = nuvem.fonte_silver_ti_desde(tabela, ano_inicio) or f"'{nuvem.DIR_TEMP.as_posix()}/_nada/{tabela}'"
+        else:
+            fonte = nuvem.fonte_silver_ti(tabela)
+        sql = sql.replace(marcador, fonte)
+    return sql
+
+
+def _ordem(sql: str) -> str:
+    """A ordenação final da tabela (o último ORDER BY), para a mescla manter a mesma ordem."""
+    achadas = re.findall(r"ORDER BY\s+([^\n]+)", sql)
+    return achadas[-1].strip() if achadas else "ALL"
 
 COL_CNAE = "cnae_20_subclasse"
 COL_CBO = "cbo_ocupacao_2002"
@@ -354,20 +385,39 @@ AGREGADOS = {
 POR_ANO = {"rais_mediana"}
 
 
-def _consulta_por_ano(con, nome: str) -> str:
+def _consulta_por_ano(con, nome: str, anos: list[int]) -> str:
     """Monta a tabela ano a ano numa tabela temporária e devolve a consulta que a lê."""
-    anos = sorted(nuvem.anos_no_repo(nuvem.repo_silver_ti("rais_vinc"), nuvem.pasta_silver("rais_vinc"), "ano_particao"))
     sql = AGREGADOS[nome]
     assert FONTE_VINC in sql, f"{nome}: a consulta não lê FONTE_VINC, não dá para separar por ano"
     con.execute("DROP TABLE IF EXISTS _por_ano")
     for i, ano in enumerate(anos):
-        do_ano = sql.replace(FONTE_VINC, nuvem.fonte_silver_ti("rais_vinc", f"ano_particao={ano}/**/*.parquet"))
-        con.execute(("CREATE TEMP TABLE _por_ano AS " if i == 0 else "INSERT INTO _por_ano ") + do_ano)
+        con.execute(("CREATE TEMP TABLE _por_ano AS " if i == 0 else "INSERT INTO _por_ano ") + _resolver(sql, ano=ano))
     print(f"   … {len(anos)} ano(s), um de cada vez", flush=True)
-    return "SELECT * FROM _por_ano ORDER BY 1, 2, 3"
+    return f"SELECT * FROM _por_ano ORDER BY {_ordem(sql)}"
 
 
-def construir(con, nome: str) -> bool:
+def _consulta(con, nome: str, recentes: bool) -> str:
+    """
+    A consulta que constrói a tabela: inteira, ou (recentes) só os anos novos
+    mesclados com a tabela publicada (ver _utils/incremental.py).
+    """
+    sql = AGREGADOS[nome]
+    ano_inicio, publicado = incremental.ano_inicio_rais(con, nome) if recentes else (0, None)
+    if recentes and not publicado:
+        print("   ↪️  ainda não publicada: refazendo todos os anos")
+    if not publicado:
+        if nome in POR_ANO:
+            return _consulta_por_ano(con, nome, incremental.anos_rais())
+        return _resolver(sql)
+    print(f"   … {ano_inicio} em diante; os anos anteriores vêm da gold publicada", flush=True)
+    if nome in POR_ANO:
+        novo = _consulta_por_ano(con, nome, [a for a in incremental.anos_rais() if a >= ano_inicio])
+    else:
+        novo = _resolver(sql, ano_inicio=ano_inicio)
+    return incremental.sql_mesclado(publicado, novo, ano_inicio, _ordem(sql))
+
+
+def construir(con, nome: str, recentes: bool = False) -> bool:
     # Grava direto na pasta local que gold_unificado/publicar_gold.py lê
     # para publicar.
     nuvem.DIR_GOLD_LOCAL.mkdir(parents=True, exist_ok=True)
@@ -375,7 +425,7 @@ def construir(con, nome: str) -> bool:
     print(f"\n🔨 {nome}")
     inicio = time.time()
     try:
-        consulta = _consulta_por_ano(con, nome) if nome in POR_ANO else AGREGADOS[nome]
+        consulta = _consulta(con, nome, recentes)
         con.execute(f"""
             COPY ({consulta}) TO '{destino}' (
                 FORMAT PARQUET,
@@ -391,7 +441,7 @@ def construir(con, nome: str) -> bool:
         return False
 
 
-def verificar_saltos(con, minimo: int = 5000, fator: int = 10) -> None:
+def verificar_saltos(con, minimo: int = 5000, fator: int = 10, desde: int = 0) -> None:
     """
     Acusa ocupação de TI que aparece ou some num município de um ano para o
     outro.
@@ -406,9 +456,12 @@ def verificar_saltos(con, minimo: int = 5000, fator: int = 10) -> None:
     verificação acusava 27 casos dos quais só um era defeito. Lê a silver
     (antes de qualquer exclusão) e não interrompe a construção: o que ela
     lista precisa de leitura humana, e o artefato já conhecido sai marcado.
+
+    `desde`: só os anos a partir dele (a rodada incremental compara o ano novo
+    com o anterior, sem ler a série inteira).
     """
     cbo = esc.sql_codigo_cbo(COL_CBO)
-    saltos = con.execute(f"""
+    saltos = con.execute(_resolver(f"""
         WITH g AS (
             SELECT ano, municipio, {cbo} AS cbo,
                    count(*) FILTER (WHERE {ATIVO}) AS n,
@@ -430,7 +483,7 @@ def verificar_saltos(con, minimo: int = 5000, fator: int = 10) -> None:
           AND greatest(antes, depois) >= {minimo}
           AND greatest(antes, depois) >= {fator} * least(antes, depois)
         ORDER BY ano
-    """).fetchall()
+    """, ano_inicio=desde)).fetchall()
     a = esc.ARTEFATO_RO
     print(f"\n🔎 ocupações de TI que mudam {fator}x num município de um ano para o outro "
           f"(>= {minimo:,} vínculos): {len(saltos)}")
@@ -441,24 +494,29 @@ def verificar_saltos(con, minimo: int = 5000, fator: int = 10) -> None:
         print(f"   {ano}  município {mun}  CBO {cod}: {antes:,} -> {depois:,}{casa}  ({marca})")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Constrói a camada gold da RAIS.")
     p.add_argument("--tabela", nargs="+", choices=list(AGREGADOS), default=list(AGREGADOS))
+    p.add_argument("--anos", choices=("todos", "recentes"), default="todos",
+                   help="recentes: só os anos novos, mesclados com a gold publicada")
     p.add_argument("--threads", type=int, default=4,
                    help="A RAIS de TI tem 23,8 milhões de vínculos e as médias "
                         "com FILTER seguram muita memória por thread.")
-    args = p.parse_args()
+    args = p.parse_args(argv)
+    recentes = args.anos == "recentes"
 
     con = nuvem.conectar_duckdb()
     con.execute(f"SET threads={args.threads}")
     print("=" * 70)
-    print("  GOLD — estoque de emprego em tecnologia (RAIS)")
+    print(f"  GOLD — estoque de emprego da área (RAIS) · anos: {args.anos}")
     print("=" * 70)
 
-    ok = sum(construir(con, nome) for nome in args.tabela)
+    ok = sum(construir(con, nome, recentes) for nome in args.tabela)
     print(f"\n🏁 {ok}/{len(args.tabela)} agregado(s) construído(s).")
     try:
-        verificar_saltos(con)
+        # Na rodada incremental, só o ano novo contra o anterior.
+        anos = incremental.anos_rais()
+        verificar_saltos(con, desde=anos[-1] - 1 if (recentes and len(anos) > 1) else 0)
     except Exception as e:
         print(f"   ⚠️ verificação de saltos não rodou: {str(e)[:200]}")
     return 0 if ok == len(args.tabela) else 2

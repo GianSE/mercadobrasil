@@ -1,5 +1,5 @@
 name: Etapa · Gold RAIS
-run-name: "Gold RAIS · ${{ inputs.area }}"
+run-name: "Gold RAIS · ${{ inputs.area }} · ${{ inputs.anos || 'todos' }}"
 
 # Estoque de emprego da área escolhida, a partir de mercadobrasil-<área>/silver-rais-<área>.
 # Publica em Gianpedro/mercadobrasil-<área>/gold-<área>. A área só troca as listas do recorte e os
@@ -14,11 +14,19 @@ on:
         options: ["escolha a área", tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
         default: "escolha a área"
         required: true
+      anos:
+        description: "recentes = só os anos novos da RAIS, mesclados com a gold publicada; todos = refaz tudo"
+        type: choice
+        options: [todos, recentes]
+        default: todos
   workflow_call:
     inputs:
       area:
         type: string
         required: true
+      anos:
+        type: string
+        default: todos
 
 env:
   AREA: ${{ inputs.area }}
@@ -46,4 +54,4 @@ jobs:
 
       - name: Reconstrói o estoque de emprego (RAIS)
         working-directory: tasks-python/3-gold
-        run: python gold-rais.py
+        run: python gold-rais.py --anos ${{ inputs.anos || 'todos' }}

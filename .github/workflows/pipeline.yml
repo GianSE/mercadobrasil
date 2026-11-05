@@ -15,8 +15,9 @@ run-name: "CAGED + RAIS · ${{ inputs.area }} · desde ${{ inputs.comecar_em }}"
 #   silver das áreas, CAGED e RAIS (silver-areas.yml): cada tabela/ano da
 #   completa é baixado UMA vez e recortado para todas as áreas pedidas
 #        │
-#   gold completa, 2 áreas por vez (area-carga.yml): RAIS, CAGED (todos os
-#   anos), território (as duas partes) e modelos
+#   gold, 2 áreas por vez (area-carga.yml): RAIS, CAGED, território (as
+#   duas partes) e modelos. Com "recentes" (o padrão), só os anos novos de
+#   cada tabela; o que ainda não foi publicado é feito inteiro sozinho.
 #
 # Tudo publica no repositório da área, Gianpedro/mercadobrasil-<área>, cada
 # camada na sua pasta (silver-caged-<área>/, silver-rais-<área>/, gold-<área>/).
@@ -35,6 +36,11 @@ on:
         type: choice
         options: [bronze, "silver completa", "silver área", gold]
         default: "silver área"
+      anos_gold:
+        description: "Anos da gold: recentes (só os novos, mesclados com a gold publicada) ou todos"
+        type: choice
+        options: [recentes, todos]
+        default: recentes
       ano_inicio:
         description: "Ano inicial para bronze/silver (vazio = padrão de cada etapa)"
       ano_fim:
@@ -145,4 +151,5 @@ jobs:
     uses: ./.github/workflows/area-carga.yml
     with:
       area: ${{ matrix.area }}
+      anos_gold: ${{ inputs.anos_gold }}
     secrets: inherit

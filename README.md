@@ -58,11 +58,11 @@ No GitHub Actions, a lista de workflows se agrupa pelo nome:
 | Workflow | Quando | Para quê |
 |---|---|---|
 | **Pipeline · CAGED (semanal)** | sozinho, toda terça | o mês novo do CAGED: bronze e silver completa (uma vez, comuns a todas as áreas), depois a silver das áreas numa passada só e, nas que ganharam mês novo (2 por vez), gold do CAGED e fluxo do mapa (só o ano corrente e o anterior; o resto é reaproveitado), previsão e nowcast |
-| **Pipeline · RAIS (mensal)** | sozinho, todo dia 15 | o ano novo da RAIS: bronze e silver completa (uma vez, comuns a todas as áreas), depois a silver das áreas numa passada só e, nas que ganharam ano novo (2 por vez), gold da RAIS, o estoque do mapa, hiato e sobrevivência |
+| **Pipeline · RAIS (mensal)** | sozinho, todo dia 15 | o ano novo da RAIS: bronze e silver completa (uma vez, comuns a todas as áreas), depois a silver das áreas numa passada só e, nas que ganharam ano novo (2 por vez), gold da RAIS, estoque do mapa e hiato (só o ano novo; o resto é reaproveitado) e sobrevivência |
 | **Alerta · Dicionário MTE** | sozinho, todo dia 1 | avisa se o MTE publicou dicionário novo |
 | **Auditoria · ...** | à mão | confere a silver da área contra a contagem direto na bronze |
 | **Etapa · ...** | à mão, raramente | uma etapa solta, para consertar algo pontual (refazer a silver de um ano, por exemplo) |
-| **Pipeline · CAGED + RAIS** | à mão | montar uma área nova, refazer uma área inteira ou, com `todas`, carregar as 10 áreas, as duas bases num clique |
+| **Pipeline · CAGED + RAIS** | à mão | as duas bases num clique, para uma área ou `todas`; por padrão só os anos novos de cada tabela (uma área nova sai inteira sozinha), ou `todos` para refazer do zero |
 | **Uso interno · ...** | nunca | peças que os Pipelines chamam; não têm botão de rodar |
 
 Com várias áreas (`todas`), a silver das áreas sai numa passada só: cada

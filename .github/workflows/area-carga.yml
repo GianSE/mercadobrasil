@@ -1,11 +1,13 @@
 name: Uso interno · Gold completa de uma área
 
-# Chamado pelo Pipeline · CAGED + RAIS, uma vez por área (2 áreas por vez): a gold
-# inteira, CAGED e RAIS, todos os anos. A silver da área já foi recortada
-# antes (silver-areas.yml).
+# Chamado pelo Pipeline · CAGED + RAIS, uma vez por área (2 áreas por vez): a
+# gold das duas bases. A silver da área já foi recortada antes
+# (silver-areas.yml). Com "recentes", cada tabela refaz só os anos novos e
+# mantém os publicados; uma tabela ainda não publicada (área nova) é feita
+# inteira sozinha.
 #
 #   gold-rais ── gold-modelos (o nowcast lê o rais_estoque_anual)
-#   gold-caged-consolidado (todos os anos)
+#   gold-caged-consolidado
 #   gold-territorio (as duas partes do mapa)
 
 on:
@@ -14,19 +16,23 @@ on:
       area:
         type: string
         required: true
+      anos_gold:
+        type: string
+        default: recentes
 
 jobs:
   gold-rais:
     uses: ./.github/workflows/gold-rais.yml
     with:
       area: ${{ inputs.area }}
+      anos: ${{ inputs.anos_gold }}
     secrets: inherit
 
   gold-caged:
     uses: ./.github/workflows/gold-caged-consolidado.yml
     with:
       area: ${{ inputs.area }}
-      anos: todos
+      anos: ${{ inputs.anos_gold }}
     secrets: inherit
 
   gold-territorio:
@@ -34,6 +40,7 @@ jobs:
     with:
       area: ${{ inputs.area }}
       base: ambas
+      anos: ${{ inputs.anos_gold }}
     secrets: inherit
 
   gold-modelos:
@@ -42,4 +49,5 @@ jobs:
     with:
       area: ${{ inputs.area }}
       base: ambas
+      anos: ${{ inputs.anos_gold }}
     secrets: inherit

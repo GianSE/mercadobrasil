@@ -19,7 +19,7 @@ on:
         options: [ambas, caged, rais]
         default: ambas
       anos:
-        description: "Com base caged: recentes refaz o fluxo só do ano corrente e do anterior; todos refaz tudo"
+        description: "recentes = só os anos novos (fluxo: ano corrente e anterior; estoque: ano novo da RAIS); todos = refaz tudo"
         type: choice
         options: [todos, recentes]
         default: todos

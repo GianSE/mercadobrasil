@@ -31,6 +31,11 @@ on:
         type: choice
         options: [bronze, "silver completa", "silver área", gold]
         default: bronze
+      anos_gold:
+        description: "Anos da gold: recentes (só os novos, mesclados com a gold publicada) ou todos"
+        type: choice
+        options: [recentes, todos]
+        default: recentes
 
 concurrency:
   group: pipeline-rais
@@ -100,4 +105,5 @@ jobs:
     uses: ./.github/workflows/area-rais.yml
     with:
       area: ${{ matrix.area }}
+      anos_gold: ${{ inputs.anos_gold || 'recentes' }}
     secrets: inherit

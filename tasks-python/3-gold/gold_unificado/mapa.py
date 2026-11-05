@@ -42,12 +42,13 @@ Uso:
     python -m gold_unificado.mapa                # refaz as duas
 """
 import argparse
+import datetime
 import shutil
 import sys
 import time
 from pathlib import Path
 
-from _utils import nuvem
+from _utils import incremental, nuvem
 from _utils import escopo_tecnologia as esc
 
 UF = "upper(split_part(municipio_descricao, '-', 1))"
@@ -95,18 +96,25 @@ def _caged(ano_inicio: int = 0) -> str | None:
     return "\n    UNION ALL".join(partes) if partes else None
 
 
-def _rais() -> str:
+def _rais(ano_inicio: int = 0) -> str | None:
+    """
+    A RAIS da área. Com `ano_inicio`, só os anos desse em diante: na RAIS o
+    ano é o do arquivo, então ler os arquivos desses anos basta. O filtro de
+    Rondônia é por ano e código, e vale igual sobre os anos lidos.
+    """
+    fonte = nuvem.fonte_silver_ti_desde("rais_vinc", ano_inicio) if ano_inicio else nuvem.fonte_silver_ti("rais_vinc")
+    if fonte is None:
+        return None
     return f"""
     SELECT ano_particao AS ano, {UF} AS uf, {MUNICIPIO} AS municipio,
            {CODIGO} AS cod_municipio,
            vinculo_ativo_3112, vl_remun_media_sm,
            {esc.sql_classificacao('cnae_20_subclasse', 'cbo_ocupacao_2002')}
-    FROM read_parquet({nuvem.fonte_silver_ti("rais_vinc")},
-                      hive_partitioning=true)
+    FROM read_parquet({fonte}, hive_partitioning=true)
     WHERE municipio_descricao IS NOT NULL
       -- Sem o funcionalismo de Rondônia declarado como programador
       -- (ver escopo_tecnologia.ARTEFATO_RO).
-      AND {esc.sql_sem_artefato_rais(nuvem.fonte_silver_ti("rais_vinc"))}
+      AND {esc.sql_sem_artefato_rais(fonte)}
 """
 
 
@@ -135,7 +143,7 @@ def _sql_parte(parte: str, nivel: str, ano_inicio: int = 0) -> str:
                count(*) FILTER (WHERE vinculo_ativo_3112 = '1') AS estoque,
                round(avg({REMUN}), 2)                           AS remuneracao_sm,
                round(median({REMUN}), 2)                        AS remuneracao_sm_mediana
-        FROM ({_rais()}) WHERE setor_ti OR ocupacao_ti GROUP BY ALL
+        FROM ({_rais(ano_inicio)}) WHERE setor_ti OR ocupacao_ti GROUP BY ALL
     """
 
 
@@ -191,19 +199,9 @@ def _gravar(con, nome: str, sql: str) -> bool:
         return False
 
 
-def _publicado(nome: str) -> str | None:
-    """O arquivo da tabela como está publicado na gold da área (no cache do Hub), ou None."""
-    from huggingface_hub import hf_hub_download
-
-    try:
-        return hf_hub_download(nuvem.REPO_GOLD, nuvem.caminho_na_gold(f"{nome}.parquet"), repo_type="dataset")
-    except Exception:
-        return None
-
-
 def _semear(nome: str) -> bool:
     """A parte da outra base, como está publicada na gold da área."""
-    caminho = _publicado(nome)
+    caminho = incremental.publicado(nome)
     if not caminho:
         return False
     nuvem.DIR_GOLD_LOCAL.mkdir(parents=True, exist_ok=True)
@@ -212,52 +210,63 @@ def _semear(nome: str) -> bool:
     return True
 
 
-def _sql_fluxo_incremental(nivel: str, ano_inicio: int, publicado: str) -> str:
+def _sql_incremental(parte: str, nivel: str, ano_inicio: int, publicado: str) -> str:
     """
     Os anos anteriores a `ano_inicio` como estão publicados, e os de
-    `ano_inicio` em diante recalculados. O fluxo tem o ano no grão, então
-    trocar os anos recentes inteiros não mistura nada.
+    `ano_inicio` em diante recalculados. As duas partes têm o ano no grão,
+    então trocar os anos recentes inteiros não mistura nada.
     """
-    if _caged(ano_inicio) is None:
-        # Sem arquivo novo nenhum: o publicado fica como está.
+    if (_caged(ano_inicio) if parte == "fluxo" else _rais(ano_inicio)) is None:
+        # Sem arquivo nenhum desses anos: o publicado fica como está.
         return f"SELECT * FROM read_parquet('{Path(publicado).as_posix()}') ORDER BY ALL"
-    return f"""
-        SELECT * FROM read_parquet('{Path(publicado).as_posix()}') WHERE ano < {ano_inicio}
-        UNION ALL BY NAME
-        ({_sql_parte('fluxo', nivel, ano_inicio)})
-        ORDER BY ALL
+    return incremental.sql_mesclado(publicado, _sql_parte(parte, nivel, ano_inicio), ano_inicio)
+
+
+def _inicio_incremental(con, parte: str, nome: str) -> tuple[int, str | None]:
     """
+    O primeiro ano a refazer na parte e o arquivo publicado dela; (0, None)
+    se ainda não há publicado (refaz tudo). Fluxo: o ano corrente e o
+    anterior, que são os que um mês novo do CAGED muda. Estoque: o ano novo
+    da RAIS (ver _utils/incremental.py).
+    """
+    if parte == "fluxo":
+        arquivo = incremental.publicado(nome)
+        return (datetime.date.today().year - 1, arquivo) if arquivo else (0, None)
+    return incremental.ano_inicio_rais(con, nome)
 
 
-def construir(base: str = "ambas", threads: int = 4, ano_inicio: int = 0) -> int:
+def construir(base: str = "ambas", threads: int = 4, recentes: bool = False) -> int:
     """
     Refaz a parte de `base` ("caged", "rais" ou "ambas") nos dois níveis e
     junta com a outra. A parte da outra base vem da gold publicada; se ainda
     não existir (a primeira execução depois da separação), é calculada aqui.
 
-    `ano_inicio` (só com base "caged"): o fluxo refaz só as competências desse
-    ano em diante e mantém as anteriores publicadas, como os cubos do CAGED.
-    Sem fluxo publicado ainda, refaz tudo. Devolve 0 se tudo deu certo.
+    `recentes`: cada parte refeita refaz só os anos novos e mantém os
+    anteriores publicados (fluxo: ano corrente e anterior; estoque: o ano
+    novo da RAIS). Sem a parte publicada ainda, refaz tudo. Devolve 0 se
+    tudo deu certo.
     """
     con = nuvem.conectar_duckdb()
     con.execute(f"SET threads={threads}")
     con.execute("SET enable_progress_bar=false")
     print("=" * 70)
     print(f"  GOLD — território: estoque (RAIS) e fluxo (CAGED) · refazendo: {base}"
-          + (f" (fluxo de {ano_inicio} em diante)" if base == "caged" and ano_inicio else ""))
+          + (" (só os anos novos)" if recentes else ""))
     print("=" * 70)
 
     falhas = []
     for nivel in NIVEIS:
         for parte, dona in PARTES.items():
             nome = f"mapa_{nivel}_{parte}"
-            publicado = _publicado(nome) if (parte == "fluxo" and base == "caged" and ano_inicio) else None
-            if publicado:
-                ok = _gravar(con, nome, _sql_fluxo_incremental(nivel, ano_inicio, publicado))
-            elif base in ("ambas", dona):
-                if parte == "fluxo" and base == "caged" and ano_inicio:
-                    print(f"\n↪️  {nome} ainda não está na gold: refazendo todos os anos")
-                ok = _gravar(con, nome, _sql_parte(parte, nivel))
+            if base in ("ambas", dona):
+                ano_inicio, publicado = _inicio_incremental(con, parte, nome) if recentes else (0, None)
+                if publicado:
+                    print(f"\n… {nome}: {ano_inicio} em diante; os anos anteriores vêm da gold publicada")
+                    ok = _gravar(con, nome, _sql_incremental(parte, nivel, ano_inicio, publicado))
+                else:
+                    if recentes:
+                        print(f"\n↪️  {nome} ainda não está na gold: refazendo todos os anos")
+                    ok = _gravar(con, nome, _sql_parte(parte, nivel))
             else:
                 ok = _semear(nome)
                 if not ok:
@@ -278,10 +287,10 @@ def main() -> int:
     p.add_argument("--base", choices=("caged", "rais", "ambas"), default="ambas",
                    help="Qual parte refazer; a outra vem da gold publicada.")
     p.add_argument("--threads", type=int, default=4)
-    p.add_argument("--ano-inicio", type=int, default=0,
-                   help="Com --base caged: refaz o fluxo só desse ano em diante (0 = todos).")
+    p.add_argument("--anos", choices=("todos", "recentes"), default="todos",
+                   help="recentes: a parte refeita só nos anos novos, mesclada com a publicada")
     args = p.parse_args()
-    return construir(args.base, args.threads, args.ano_inicio)
+    return construir(args.base, args.threads, args.anos == "recentes")
 
 
 if __name__ == "__main__":
