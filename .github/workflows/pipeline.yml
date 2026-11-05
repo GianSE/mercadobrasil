@@ -1,5 +1,5 @@
-name: Novo · Carga inicial de uma área (CAGED + RAIS)
-run-name: "Carga inicial · ${{ inputs.area }} · desde ${{ inputs.comecar_em }}"
+name: Pipeline · CAGED + RAIS
+run-name: "CAGED + RAIS · ${{ inputs.area }} · desde ${{ inputs.comecar_em }}"
 
 # CAGED e RAIS juntos, de ponta a ponta, só manual: para montar uma área nova,
 # refazer uma área inteira ou, com "todas", carregar as 10 de uma vez. A

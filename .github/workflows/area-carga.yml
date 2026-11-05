@@ -1,6 +1,6 @@
 name: Uso interno · Gold completa de uma área
 
-# Chamado pela Carga inicial, uma vez por área (2 áreas por vez): a gold
+# Chamado pelo Pipeline · CAGED + RAIS, uma vez por área (2 áreas por vez): a gold
 # inteira, CAGED e RAIS, todos os anos. A silver da área já foi recortada
 # antes (silver-areas.yml).
 #

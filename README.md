@@ -62,8 +62,8 @@ No GitHub Actions, a lista de workflows se agrupa pelo nome:
 | **Alerta · Dicionário MTE** | sozinho, todo dia 1 | avisa se o MTE publicou dicionário novo |
 | **Auditoria · ...** | à mão | confere a silver da área contra a contagem direto na bronze |
 | **Etapa · ...** | à mão, raramente | uma etapa solta, para consertar algo pontual (refazer a silver de um ano, por exemplo) |
-| **Novo · Carga inicial de uma área (CAGED + RAIS)** | à mão | montar uma área nova, refazer uma área inteira ou, com `todas`, carregar as 10 áreas, as duas bases num clique |
-| **Uso interno · ...** | nunca | peças que os Pipelines e a Carga inicial chamam; não têm botão de rodar |
+| **Pipeline · CAGED + RAIS** | à mão | montar uma área nova, refazer uma área inteira ou, com `todas`, carregar as 10 áreas, as duas bases num clique |
+| **Uso interno · ...** | nunca | peças que os Pipelines chamam; não têm botão de rodar |
 
 Com várias áreas (`todas`), a silver das áreas sai numa passada só: cada
 tabela e ano da silver completa é baixado uma vez para o disco do runner e

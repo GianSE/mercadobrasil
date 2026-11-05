@@ -1,6 +1,6 @@
 name: Uso interno · Silver de várias áreas
 
-# Chamado pelos Pipelines e pela Carga inicial. Recorta a silver de várias
+# Chamado pelos três Pipelines (CAGED, RAIS e CAGED + RAIS). Recorta a silver de várias
 # áreas lendo a silver completa UMA vez por tabela e ano (silver-areas.py):
 # cada job baixa um tabela/ano para o disco do runner e grava a silver de
 # todas as áreas que precisam dele, cada uma no seu repositório.
