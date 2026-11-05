@@ -54,16 +54,13 @@ TAMANHO_ROW_GROUP = 50_000
 
 
 def anos_na_silver(con, tabela: str) -> list[int]:
-    from _utils import nuvem
-
-    origem = nuvem.fonte_silver_ti(tabela)
-    try:
-        return [r[0] for r in con.execute(
-            f"SELECT DISTINCT ano_particao FROM read_parquet({origem}, union_by_name=true) "
-            f"ORDER BY 1"
-        ).fetchall()]
-    except Exception:
-        return []
+    """
+    Os anos da tabela na silver da área, pela LISTAGEM do repositório: o ano
+    está no caminho (`ano_particao=2025/...`), não dentro do arquivo. Ler os
+    dados para descobrir os anos baixaria a tabela inteira com a cópia local
+    ligada — na rodada semanal, GBs só para refazer os dois anos recentes.
+    """
+    return sorted(nuvem.anos_no_repo(nuvem.repo_silver_ti(tabela), nuvem.pasta_silver(tabela), "ano_particao"))
 
 
 def consolidar_ano(con, tabela: str, ano: int) -> bool:
@@ -143,9 +140,6 @@ def main() -> int:
 
     total = sum(f.stat().st_size for f in DIR_SAIDA.glob("*.parquet"))
     print(f"\n🏁 {ok} arquivo(s) de ano gerado(s) · {total / 1e6:.1f} MB no total em {DIR_SAIDA}")
-    print("\nPróximo passo — publicar no Hugging Face:")
-    print("   set HF_TOKEN=hf_xxxxx")
-    print("   python -m gold_caged.publicar_hf --repo SEU_USUARIO/silver-caged-ti")
     return 0 if ok else 1
 
 

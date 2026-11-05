@@ -47,18 +47,15 @@ TAMANHO_ROW_GROUP = 50_000
 
 
 def anos_disponiveis(con) -> list[int]:
+    """
+    Os anos das duas gerações, pela listagem do repositório (ver
+    consolidar.anos_na_silver): sem baixar nem ler dado nenhum.
+    """
     from _utils import nuvem
 
-    mov = nuvem.fonte_silver_ti("caged_mov")
-    old = nuvem.fonte_silver_ti("caged_old")
     anos = set()
-    for origem in (mov, old):
-        try:
-            anos.update(r[0] for r in con.execute(
-                f"SELECT DISTINCT ano_particao FROM read_parquet({origem}, union_by_name=true)"
-            ).fetchall())
-        except Exception:
-            pass
+    for tabela in ("caged_mov", "caged_old"):
+        anos |= nuvem.anos_no_repo(nuvem.repo_silver_ti(tabela), nuvem.pasta_silver(tabela), "ano_particao")
     return sorted(anos)
 
 
