@@ -111,10 +111,10 @@ export function Onde({ area }: { area: Area }) {
 function Setor({ area, ano }: { area: Area; ano: number }) {
   const dados = useConsulta(area.slug, area.repo, `
     SELECT setor_empresa AS nome, sum(estoque_3112)::DOUBLE AS valor
-    FROM rais_setor_vs_ocupacao WHERE ano = ${ano} AND ocupacao_ti AND NOT setor_ti AND setor_empresa IS NOT NULL
+    FROM rais_setor_vs_ocupacao WHERE ano = ${ano} AND ocupacao_da_area AND NOT setor_da_area AND setor_empresa IS NOT NULL
     GROUP BY 1 ORDER BY 2 DESC LIMIT 12`);
   const total = useConsulta(area.slug, area.repo, `
-    SELECT sum(estoque_3112) FILTER (WHERE ocupacao_ti AND NOT setor_ti)::DOUBLE AS fora, sum(estoque_3112) FILTER (WHERE ocupacao_ti)::DOUBLE AS prof
+    SELECT sum(estoque_3112) FILTER (WHERE ocupacao_da_area AND NOT setor_da_area)::DOUBLE AS fora, sum(estoque_3112) FILTER (WHERE ocupacao_da_area)::DOUBLE AS prof
     FROM rais_setor_vs_ocupacao WHERE ano = ${ano}`);
   const t = total.tipo === "pronto" ? total.dados[0] : undefined;
   const d = dados.tipo === "pronto" ? dados.dados : [];

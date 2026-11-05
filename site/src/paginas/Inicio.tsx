@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { Variacao } from "../components/Indicador";
+import { LogoHero } from "../components/marca/LogoHero";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Skeleton } from "../components/ui/skeleton";
@@ -12,9 +13,12 @@ import { estoqueAnual, resumir } from "../lib/rais";
 export function Inicio() {
   return (
     <main className="mx-auto max-w-6xl px-4">
-      <section className="py-12 sm:py-16">
+      <section className="flex flex-col items-center py-12 text-center sm:py-16">
+        {/* A logo completa se desenha uma vez ao abrir; com "menos movimento"
+            no sistema, aparece parada e inteira. */}
+        <LogoHero className="mb-10 w-64 max-w-full" />
         <p className="text-sm font-medium text-muted-foreground">RAIS e CAGED · Ministério do Trabalho e Emprego</p>
-        <h1 className="mt-2 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">
+        <h1 className="mt-2 max-w-3xl text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
           O mercado de trabalho formal no Brasil, área por área
         </h1>
         <p className="mt-4 max-w-2xl text-muted-foreground">

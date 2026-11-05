@@ -44,7 +44,7 @@ export function useRecorteCbo(area: Area): Estado<Recorte> {
 /** Atividades do setor da área (rais_setor_vs_ocupacao, só o setor): divisão → subclasse. */
 export function useRecorteCnae(area: Area): Estado<Recorte> {
   return useTabela(area.repo, "rais_setor_vs_ocupacao", (linhas: Linha[]) => {
-    const setor = linhas.filter((l) => l.setor_ti && Number(l.estoque_3112) > 0 && l.cnae);
+    const setor = linhas.filter((l) => l.setor_da_area && Number(l.estoque_3112) > 0 && l.cnae);
     const cod = (l: Linha) => String(l.cnae).padStart(7, "0");
     return montar(
       setor.map((l) => ({ ano: Number(l.ano), id: `cnae:${cod(l)}`, valor: Number(l.estoque_3112) })),

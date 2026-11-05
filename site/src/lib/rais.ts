@@ -2,15 +2,15 @@ import type { Area } from "./areas";
 import type { Linha } from "./dados";
 
 /*
- * Leituras da gold que mais de uma página usa. As colunas setor_ti e
- * ocupacao_ti se chamam assim em toda área (ver tasks-python/_utils/areas.py):
+ * Leituras da gold que mais de uma página usa. As colunas setor_da_area e
+ * ocupacao_da_area se chamam assim em toda área (ver tasks-python/_utils/areas.py):
  * querem dizer "setor da área" e "ocupação da área".
  */
 
 export type Lente = "dentro" | "fora" | "so_setor";
 
 export function lenteDe(l: Linha): Lente {
-  if (l.ocupacao_ti) return l.setor_ti ? "dentro" : "fora";
+  if (l.ocupacao_da_area) return l.setor_da_area ? "dentro" : "fora";
   return "so_setor";
 }
 

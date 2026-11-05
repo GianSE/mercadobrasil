@@ -224,7 +224,7 @@ function estabelecimentosDoSetor(linhas: Linha[]): number | null {
   const ano = ultimoAno(linhas);
   // "ZERO" é o porte de quem não tem empregado no ano: conta como empresa, não como empregador.
   return linhas
-    .filter((l) => l.ano === ano && l.setor_ti && l.porte !== "ZERO")
+    .filter((l) => l.ano === ano && l.setor_da_area && l.porte !== "ZERO")
     .reduce((s, l) => s + ((l.estabelecimentos as number) ?? 0), 0);
 }
 
@@ -238,8 +238,8 @@ function somarPor(linhas: Linha[], chave: string, valor: string): Item[] {
 function porSubarea(linhas: Linha[], area: TipoArea): Item[] {
   const ano = ultimoAno(linhas);
   return somarPor(
-    linhas.filter((l) => l.ano === ano && l.area_ti !== area.rotulos.nao_area),
-    "area_ti",
+    linhas.filter((l) => l.ano === ano && l.subarea !== area.rotulos.nao_area),
+    "subarea",
     "estoque_3112",
   );
 }

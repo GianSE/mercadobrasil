@@ -1,0 +1,29 @@
+/* Logo do cabeçalho: mapa se desenha (0–0,9 s), barras sobem (0,5–1,1 s), nome aparece (0,8 s).
+   Só dentro da página: favicon e ícones do PWA continuam estáticos. */
+.mb-mapa {
+  stroke-dasharray: 1;
+  animation: mb-desenha 900ms cubic-bezier(0.55, 0.1, 0.35, 1) both;
+}
+.mb-barra {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: mb-sobe 550ms cubic-bezier(0.2, 0.8, 0.2, 1.12) both;
+}
+.mb-barra:nth-of-type(1) { animation-delay: 500ms; }
+.mb-barra:nth-of-type(2) { animation-delay: 590ms; }
+.mb-barra:nth-of-type(3) { animation-delay: 680ms; }
+.mb-barra:nth-of-type(4) { animation-delay: 770ms; }
+.mb-nome { animation: mb-aparece 500ms ease-out 800ms both; }
+
+@keyframes mb-desenha {
+  0%   { stroke-dashoffset: 1; opacity: 0; } /* esconde o ponto da ponta arredondada no início */
+  3%   { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+@keyframes mb-sobe    { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes mb-aparece { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .mb-mapa, .mb-barra, .mb-nome { animation: none; }
+  .mb-mapa { stroke-dasharray: none; }
+}

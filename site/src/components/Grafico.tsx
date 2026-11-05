@@ -45,11 +45,13 @@ function lerTinta(): Tinta {
   return {
     // Sete cores validadas para daltonismo nos dois temas: uma por subárea, sem repetir.
     series: [1, 2, 3, 4, 5, 6, 7].map((i) => v(`--chart-${i}`)),
-    // A rampa azul da paleta validada. No escuro ela se inverte: o maior valor
-    // é o que mais se destaca do fundo, e no escuro isso é o mais claro.
+    // Rampa azul (o azul da marca), validada como ordinal contra o cartão de
+    // cada tema: o degrau mais fraco ainda se destaca do fundo (>= 2:1). No
+    // escuro ela se inverte: o maior valor é o que mais se destaca do
+    // marinho, e no escuro isso é o mais claro.
     sequencial: document.documentElement.classList.contains("dark")
-      ? ["#104281", "#1c5cab", "#3987e5", "#86b6ef", "#cde2fb"]
-      : ["#cde2fb", "#86b6ef", "#3987e5", "#1c5cab", "#0d366b"],
+      ? ["#1d5aa8", "#2f74c8", "#4d93e3", "#8dbcf0", "#cde2fb"]
+      : ["#8ab6eb", "#5a96df", "#3a7acb", "#2160aa", "#0f427f"],
     texto: v("--foreground"),
     rotulo: v("--chart-rotulo"),
     grade: v("--chart-grade"),
