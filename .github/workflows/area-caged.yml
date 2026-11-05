@@ -4,7 +4,7 @@ name: Uso interno · CAGED de uma área
 # silver da área e, só se havia mês novo, refaz a gold do CAGED:
 #
 #   silver-caged ─┬─ gold-caged-consolidado  (só os anos recentes; cubos mesclados)
-#                 ├─ gold-territorio --base caged  (o fluxo; o estoque vem da gold)
+#                 ├─ gold-territorio --base caged  (o fluxo dos anos recentes; o resto vem da gold)
 #                 └─ gold-modelos --base caged     (previsão e nowcast)
 #
 # Nada aqui lê a RAIS, a não ser o rais_estoque_anual já publicado (nowcast).
@@ -49,6 +49,7 @@ jobs:
     with:
       area: ${{ inputs.area }}
       base: caged
+      anos: ${{ inputs.anos_gold }}
     secrets: inherit
 
   gold-modelos:

@@ -57,7 +57,7 @@ No GitHub Actions, a lista de workflows se agrupa pelo nome:
 
 | Workflow | Quando | Para quê |
 |---|---|---|
-| **Pipeline · CAGED (semanal)** | sozinho, toda terça | o mês novo do CAGED: bronze e silver completa (uma vez, comuns a todas as áreas), depois em cada área a silver da área, gold do CAGED (ano corrente e anterior), o fluxo do mapa, previsão e nowcast |
+| **Pipeline · CAGED (semanal)** | sozinho, toda terça | o mês novo do CAGED: bronze e silver completa (uma vez, comuns a todas as áreas), depois em cada área a silver da área, gold do CAGED e fluxo do mapa (só o ano corrente e o anterior; o resto é reaproveitado), previsão e nowcast |
 | **Pipeline · RAIS (mensal)** | sozinho, todo dia 15 | o ano novo da RAIS: bronze e silver completa (uma vez, comuns a todas as áreas), depois em cada área a silver da área, gold da RAIS, o estoque do mapa, hiato e sobrevivência |
 | **Alerta · Dicionário MTE** | sozinho, todo dia 1 | avisa se o MTE publicou dicionário novo |
 | **Auditoria · ...** | à mão | confere a silver da área contra a contagem direto na bronze |

@@ -155,6 +155,11 @@ def fonte_parquet(repo: str, padrao: str) -> str:
     arquivos = sorted(a for a in arquivos_remotos(repo) if regex.fullmatch(a))
     if not arquivos:
         return f"'{DIR_TEMP.as_posix()}/_nada_no_hub/{repo.replace('/', '__')}/{padrao}'"
+    return _lista_de_leitura(repo, arquivos)
+
+
+def _lista_de_leitura(repo: str, arquivos: list[str]) -> str:
+    """A lista pronta para `read_parquet(...)`: da cópia local, se ligada, ou do Hub."""
     if ESPELHO_LOCAL and repo in (REPO_SILVER_TI_CAGED, REPO_SILVER_TI_RAIS):
         return "[" + ", ".join(f"'{p}'" for p in _no_espelho(repo, arquivos)) + "]"
     return "[" + ", ".join(f"'{fonte_leitura(repo, a)}'" for a in arquivos) + "]"
@@ -191,6 +196,21 @@ def fonte_bronze(tabela: str, resto: str = "**/*.parquet") -> str:
 def fonte_silver_ti(tabela: str, resto: str = "**/*.parquet") -> str:
     """A silver da área (a pasta dela no repositório de área)."""
     return fonte_parquet(repo_silver_ti(tabela), f"{pasta_silver(tabela)}/{resto}")
+
+
+def fonte_silver_ti_desde(tabela: str, ano_inicio: int) -> str | None:
+    """
+    Os arquivos da silver da área com `ano_particao >= ano_inicio`, prontos
+    para `read_parquet(...)`; None se não houver nenhum (o caged_old, por
+    exemplo, acaba em 2019). Um glob não expressa "a partir de um ano", por
+    isso a lista sai da listagem do repositório, como em fonte_parquet.
+    """
+    repo = repo_silver_ti(tabela)
+    regex = _glob_para_regex(f"{pasta_silver(tabela)}/**/*.parquet")
+    arquivos = sorted(a for a in arquivos_remotos(repo)
+                      if regex.fullmatch(a) and (m := re.search(r"ano_particao=(\d{4})", a))
+                      and int(m.group(1)) >= ano_inicio)
+    return _lista_de_leitura(repo, arquivos) if arquivos else None
 
 
 def glob_silver_ti(tabela: str, resto: str = "**/*.parquet") -> str:

@@ -15,9 +15,11 @@ Publica a própria fatia em Gianpedro/gold-analise-mercado-ti ao final
 (ver gold-rais.py para o motivo: cada job roda num runner novo).
 
 Uso:
-    python gold-territorio.py --base caged
+    python gold-territorio.py --base caged --anos recentes   # a fila semanal do CAGED
+    python gold-territorio.py --base rais                    # a fila da RAIS
 """
 import argparse
+import datetime
 import sys
 from pathlib import Path
 
@@ -56,24 +58,28 @@ def _semear_geo_municipios() -> None:
     print(f"⚠️  geo_municipios.parquet ainda não existe no Hub ({erro})")
 
 
-def _base() -> str:
+def _argumentos() -> tuple[str, int]:
+    """A base a refazer e, com --base caged --anos recentes, o primeiro ano do fluxo a refazer."""
     p = argparse.ArgumentParser(description="Gold território da área.")
     p.add_argument("--base", choices=("caged", "rais", "ambas"), default="ambas")
-    base = p.parse_args().base
+    p.add_argument("--anos", choices=("recentes", "todos"), default="todos",
+                   help="Com --base caged: recentes refaz o fluxo só do ano corrente e do anterior.")
+    args = p.parse_args()
     # Os módulos chamados abaixo (clusters, publicação) leem os próprios
     # argumentos de sys.argv: sem isto, recusariam o --base.
     sys.argv = sys.argv[:1]
-    return base
+    ano_inicio = datetime.date.today().year - 1 if (args.base == "caged" and args.anos == "recentes") else 0
+    return args.base, ano_inicio
 
 
 def main() -> int:
-    base = _base()
+    base, ano_inicio = _argumentos()
     _semear_geo_municipios()
 
     from gold_unificado import mapa
     from ciencia_dados import clusters_municipios
 
-    codigo_mapa = mapa.construir(base)
+    codigo_mapa = mapa.construir(base, ano_inicio=ano_inicio)
     if codigo_mapa != 0:
         telegram.notificar("⚠️ *Gold território*: mapa falhou, clusters pulado.")
         return codigo_mapa

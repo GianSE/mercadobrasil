@@ -29,7 +29,7 @@ on:
         options: [bronze, "silver completa", "silver área", gold]
         default: bronze
       anos_gold:
-        description: "Anos da gold do CAGED: recentes (corrente e anterior) ou todos"
+        description: "Anos da gold do CAGED e do fluxo do mapa: recentes (corrente e anterior) ou todos"
         type: choice
         options: [recentes, todos]
         default: recentes

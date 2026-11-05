@@ -45,6 +45,7 @@ import argparse
 import shutil
 import sys
 import time
+from pathlib import Path
 
 from _utils import nuvem
 from _utils import escopo_tecnologia as esc
@@ -60,21 +61,38 @@ CODIGO = "municipio"
 
 # Funções, e não constantes: a fonte de cada base só é listada (e, com a cópia
 # local ligada, baixada) se a parte dela for de fato recalculada.
-def _caged() -> str:
-    """O CAGED da área, nas duas gerações, com o território normalizado."""
-    return f"""
+def _caged(ano_inicio: int = 0) -> str | None:
+    """
+    O CAGED da área, nas duas gerações, com o território normalizado.
+
+    Com `ano_inicio`, só as competências desse ano em diante, lendo só os
+    arquivos desse ano em diante. Basta isso porque a silver é particionada
+    pelo ano do ARQUIVO, e uma competência nunca chega antes do seu ano: a
+    declaração atrasada de dezembro de 2025 vem num arquivo de 2026, nunca o
+    contrário. Já os anos anteriores a `ano_inicio` ficariam incompletos lidos
+    assim (falta o que chegou nos arquivos deles), e por isso não são refeitos.
+    """
+    if not ano_inicio:
+        mov, old = nuvem.fonte_silver_ti("caged_mov"), nuvem.fonte_silver_ti("caged_old")
+    else:
+        mov, old = nuvem.fonte_silver_ti_desde("caged_mov", ano_inicio), nuvem.fonte_silver_ti_desde("caged_old", ano_inicio)
+    partes = []
+    if mov:
+        partes.append(f"""
     SELECT year(competenciamov_data) AS ano,
            {UF} AS uf, {MUNICIPIO} AS municipio, {CODIGO} AS cod_municipio,
            saldomovimentacao AS saldo
-    FROM read_parquet({nuvem.fonte_silver_ti("caged_mov")},
-                      hive_partitioning=true)
+    FROM read_parquet({mov}, hive_partitioning=true)
     WHERE competenciamov_data IS NOT NULL AND municipio_descricao IS NOT NULL
-    UNION ALL
+      AND year(competenciamov_data) >= {ano_inicio}""")
+    if old:
+        partes.append(f"""
     SELECT year(competencia_declarada_data), {UF}, {MUNICIPIO}, {CODIGO}, saldo_mov
-    FROM read_parquet({nuvem.fonte_silver_ti("caged_old")},
-                      hive_partitioning=true)
+    FROM read_parquet({old}, hive_partitioning=true)
     WHERE competencia_declarada_data IS NOT NULL AND municipio_descricao IS NOT NULL
-"""
+      AND year(competencia_declarada_data) >= {ano_inicio}""")
+    # Nenhum arquivo desse ano em diante: nada a recalcular (ver _sql_fluxo_incremental).
+    return "\n    UNION ALL".join(partes) if partes else None
 
 
 def _rais() -> str:
@@ -102,7 +120,7 @@ NIVEIS = {"uf": "uf", "municipio": "uf, municipio, cod_municipio"}
 PARTES = {"fluxo": "caged", "estoque": "rais"}
 
 
-def _sql_parte(parte: str, nivel: str) -> str:
+def _sql_parte(parte: str, nivel: str, ano_inicio: int = 0) -> str:
     chave = NIVEIS[nivel]
     if parte == "fluxo":
         return f"""
@@ -110,7 +128,7 @@ def _sql_parte(parte: str, nivel: str) -> str:
                    sum(saldo)                            AS saldo,
                    count(*) FILTER (WHERE saldo = 1)     AS admissoes,
                    count(*) FILTER (WHERE saldo = -1)    AS desligamentos
-            FROM ({_caged()}) GROUP BY ALL
+            FROM ({_caged(ano_inicio)}) GROUP BY ALL
         """
     return f"""
         SELECT ano, {chave},
@@ -173,13 +191,20 @@ def _gravar(con, nome: str, sql: str) -> bool:
         return False
 
 
-def _semear(nome: str) -> bool:
-    """A parte da outra base, como está publicada na gold da área."""
+def _publicado(nome: str) -> str | None:
+    """O arquivo da tabela como está publicado na gold da área (no cache do Hub), ou None."""
     from huggingface_hub import hf_hub_download
 
     try:
-        caminho = hf_hub_download(nuvem.REPO_GOLD, nuvem.caminho_na_gold(f"{nome}.parquet"), repo_type="dataset")
+        return hf_hub_download(nuvem.REPO_GOLD, nuvem.caminho_na_gold(f"{nome}.parquet"), repo_type="dataset")
     except Exception:
+        return None
+
+
+def _semear(nome: str) -> bool:
+    """A parte da outra base, como está publicada na gold da área."""
+    caminho = _publicado(nome)
+    if not caminho:
         return False
     nuvem.DIR_GOLD_LOCAL.mkdir(parents=True, exist_ok=True)
     shutil.copy(caminho, nuvem.caminho_gold(nome))
@@ -187,25 +212,51 @@ def _semear(nome: str) -> bool:
     return True
 
 
-def construir(base: str = "ambas", threads: int = 4) -> int:
+def _sql_fluxo_incremental(nivel: str, ano_inicio: int, publicado: str) -> str:
+    """
+    Os anos anteriores a `ano_inicio` como estão publicados, e os de
+    `ano_inicio` em diante recalculados. O fluxo tem o ano no grão, então
+    trocar os anos recentes inteiros não mistura nada.
+    """
+    if _caged(ano_inicio) is None:
+        # Sem arquivo novo nenhum: o publicado fica como está.
+        return f"SELECT * FROM read_parquet('{Path(publicado).as_posix()}') ORDER BY ALL"
+    return f"""
+        SELECT * FROM read_parquet('{Path(publicado).as_posix()}') WHERE ano < {ano_inicio}
+        UNION ALL BY NAME
+        ({_sql_parte('fluxo', nivel, ano_inicio)})
+        ORDER BY ALL
+    """
+
+
+def construir(base: str = "ambas", threads: int = 4, ano_inicio: int = 0) -> int:
     """
     Refaz a parte de `base` ("caged", "rais" ou "ambas") nos dois níveis e
     junta com a outra. A parte da outra base vem da gold publicada; se ainda
     não existir (a primeira execução depois da separação), é calculada aqui.
-    Devolve 0 se tudo deu certo.
+
+    `ano_inicio` (só com base "caged"): o fluxo refaz só as competências desse
+    ano em diante e mantém as anteriores publicadas, como os cubos do CAGED.
+    Sem fluxo publicado ainda, refaz tudo. Devolve 0 se tudo deu certo.
     """
     con = nuvem.conectar_duckdb()
     con.execute(f"SET threads={threads}")
     con.execute("SET enable_progress_bar=false")
     print("=" * 70)
-    print(f"  GOLD — território: estoque (RAIS) e fluxo (CAGED) · refazendo: {base}")
+    print(f"  GOLD — território: estoque (RAIS) e fluxo (CAGED) · refazendo: {base}"
+          + (f" (fluxo de {ano_inicio} em diante)" if base == "caged" and ano_inicio else ""))
     print("=" * 70)
 
     falhas = []
     for nivel in NIVEIS:
         for parte, dona in PARTES.items():
             nome = f"mapa_{nivel}_{parte}"
-            if base in ("ambas", dona):
+            publicado = _publicado(nome) if (parte == "fluxo" and base == "caged" and ano_inicio) else None
+            if publicado:
+                ok = _gravar(con, nome, _sql_fluxo_incremental(nivel, ano_inicio, publicado))
+            elif base in ("ambas", dona):
+                if parte == "fluxo" and base == "caged" and ano_inicio:
+                    print(f"\n↪️  {nome} ainda não está na gold: refazendo todos os anos")
                 ok = _gravar(con, nome, _sql_parte(parte, nivel))
             else:
                 ok = _semear(nome)
@@ -227,8 +278,10 @@ def main() -> int:
     p.add_argument("--base", choices=("caged", "rais", "ambas"), default="ambas",
                    help="Qual parte refazer; a outra vem da gold publicada.")
     p.add_argument("--threads", type=int, default=4)
+    p.add_argument("--ano-inicio", type=int, default=0,
+                   help="Com --base caged: refaz o fluxo só desse ano em diante (0 = todos).")
     args = p.parse_args()
-    return construir(args.base, args.threads)
+    return construir(args.base, args.threads, args.ano_inicio)
 
 
 if __name__ == "__main__":

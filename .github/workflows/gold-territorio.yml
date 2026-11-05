@@ -17,6 +17,11 @@ on:
         type: choice
         options: [ambas, caged, rais]
         default: ambas
+      anos:
+        description: "Com base caged: recentes refaz o fluxo só do ano corrente e do anterior; todos refaz tudo"
+        type: choice
+        options: [todos, recentes]
+        default: todos
   workflow_call:
     inputs:
       area:
@@ -25,6 +30,9 @@ on:
       base:
         type: string
         default: ambas
+      anos:
+        type: string
+        default: todos
 
 env:
   AREA: ${{ inputs.area }}
@@ -54,4 +62,4 @@ jobs:
 
       - name: Reconstrói mapa e clusters de município
         working-directory: tasks-python/3-gold
-        run: python gold-territorio.py --base ${{ inputs.base || 'ambas' }}
+        run: python gold-territorio.py --base ${{ inputs.base || 'ambas' }} --anos ${{ inputs.anos || 'todos' }}
