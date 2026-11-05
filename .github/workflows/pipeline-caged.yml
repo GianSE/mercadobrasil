@@ -1,5 +1,5 @@
-name: Pipeline CAGED (semanal)
-run-name: "Pipeline CAGED · ${{ inputs.area || 'todas' }} · desde ${{ inputs.comecar_em || 'bronze' }}"
+name: 1 · CAGED (semanal)
+run-name: "CAGED · ${{ inputs.area || 'todas' }} · desde ${{ inputs.comecar_em || 'bronze' }}"
 
 # A fila do CAGED, que sai todo mês, para todas as áreas. Roda sozinha toda
 # semana: o MTE não publica em dia fixo, e uma semana sem mês novo custa só as

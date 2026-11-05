@@ -1,4 +1,4 @@
-name: Gold modelos por área
+name: Etapa · Gold modelos
 run-name: "Gold modelos · ${{ inputs.area }} · ${{ inputs.base || 'ambas' }}"
 
 # Previsão, nowcast, hiato salarial e sobrevivência de vínculo da área

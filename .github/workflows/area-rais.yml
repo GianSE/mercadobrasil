@@ -1,4 +1,4 @@
-name: Fila da RAIS de uma área
+name: Interno · RAIS de uma área
 
 # Chamado pelo pipeline-rais.yml, uma área por vez. Recorta o ano novo na
 # silver da área e, só se havia ano novo, refaz a gold da RAIS:

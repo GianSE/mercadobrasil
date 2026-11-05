@@ -1,4 +1,4 @@
-name: Silver CAGED por área
+name: Etapa · Silver CAGED da área
 run-name: "Silver CAGED · ${{ inputs.area }}"
 
 # A silver da área escolhida, em Gianpedro/mercadobrasil-<área>/silver-caged-<área>: recorte da

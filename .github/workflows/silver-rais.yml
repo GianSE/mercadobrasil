@@ -1,4 +1,4 @@
-name: Silver RAIS por área
+name: Etapa · Silver RAIS da área
 run-name: "Silver RAIS · ${{ inputs.area }}"
 
 # A silver da área escolhida, em Gianpedro/mercadobrasil-<área>/silver-rais-<área>: recorte da

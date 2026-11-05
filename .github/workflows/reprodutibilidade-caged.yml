@@ -1,4 +1,4 @@
-name: Reprodutibilidade CAGED por área
+name: Auditoria · Reprodutibilidade CAGED
 run-name: "Reprodutibilidade CAGED · ${{ inputs.area }}"
 
 # Conta o recorte da área no microdado bruto (bronze-caged), por tabela e

@@ -1,4 +1,4 @@
-name: Gold RAIS por área
+name: Etapa · Gold RAIS
 run-name: "Gold RAIS · ${{ inputs.area }}"
 
 # Estoque de emprego da área escolhida, a partir de mercadobrasil-<área>/silver-rais-<área>.

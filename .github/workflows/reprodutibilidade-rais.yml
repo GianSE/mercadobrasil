@@ -1,4 +1,4 @@
-name: Reprodutibilidade RAIS por área
+name: Auditoria · Reprodutibilidade RAIS
 run-name: "Reprodutibilidade RAIS · ${{ inputs.area }}"
 
 # Conta o recorte da área no microdado bruto (bronze-rais), ano a ano, e

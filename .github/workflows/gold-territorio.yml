@@ -1,4 +1,4 @@
-name: Gold território por área
+name: Etapa · Gold território
 run-name: "Gold território · ${{ inputs.area }} · ${{ inputs.base || 'ambas' }}"
 
 # Mapa (RAIS + CAGED) e perfis de município da área escolhida, a partir das

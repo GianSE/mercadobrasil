@@ -1,5 +1,5 @@
-name: Pipeline por área (orquestrador)
-run-name: "Pipeline · ${{ inputs.area }} · desde ${{ inputs.comecar_em }}"
+name: 3 · Carga inicial de uma área (CAGED + RAIS)
+run-name: "Carga inicial · ${{ inputs.area }} · desde ${{ inputs.comecar_em }}"
 
 # A fila COMPLETA de uma área, CAGED e RAIS juntos, só manual: para montar
 # uma área nova ou refazer tudo. A atualização do dia a dia é das filas

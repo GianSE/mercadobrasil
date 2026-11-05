@@ -1,4 +1,4 @@
-name: Fila do CAGED de uma área
+name: Interno · CAGED de uma área
 
 # Chamado pelo pipeline-caged.yml, uma área por vez. Recorta o mês novo na
 # silver da área e, só se havia mês novo, refaz a gold do CAGED:

@@ -1,5 +1,5 @@
-name: Pipeline RAIS (mensal)
-run-name: "Pipeline RAIS · ${{ inputs.area || 'todas' }} · desde ${{ inputs.comecar_em || 'bronze' }}"
+name: 2 · RAIS (mensal)
+run-name: "RAIS · ${{ inputs.area || 'todas' }} · desde ${{ inputs.comecar_em || 'bronze' }}"
 
 # A fila da RAIS, que sai uma vez por ano, para todas as áreas. Roda sozinha
 # todo mês só para notar o ano novo assim que o MTE publicar: nos outros

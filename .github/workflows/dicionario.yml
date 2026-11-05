@@ -1,4 +1,4 @@
-name: Dicionário MTE
+name: Alerta · Dicionário MTE
 
 # Só AVISA se o FTP tem planilha de layout/dicionário nova — não extrai
 # nada sozinho. Dicionário muda raramente, e dicionário errado é o jeito

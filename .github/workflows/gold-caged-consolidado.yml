@@ -1,4 +1,4 @@
-name: Gold CAGED consolidado por área
+name: Etapa · Gold CAGED
 run-name: "Gold CAGED consolidado · ${{ inputs.area }} · ${{ inputs.anos || 'todos' }}"
 
 # Um parquet por tabela e por ano, mais o CAGED unificado e os cubos, a
