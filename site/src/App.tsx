@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Route, Switch, useLocation } from "wouter";
+import { AvisoPWA } from "./components/AvisoPWA";
 import { Cabecalho, Rodape } from "./components/Cabecalho";
 import { ProvedorTema } from "./lib/tema";
 import { Inicio } from "./paginas/Inicio";
@@ -28,6 +29,7 @@ export function App() {
           </Suspense>
         </div>
         <Rodape />
+        <AvisoPWA />
       </div>
     </ProvedorTema>
   );

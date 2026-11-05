@@ -1,0 +1,13 @@
+# O service worker e o manifesto do app são sempre conferidos: com cache
+# longo, um deploy novo demoraria a chegar a quem já instalou o site.
+/sw.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+/geo/*
+  Cache-Control: public, max-age=604800
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

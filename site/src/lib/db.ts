@@ -39,6 +39,18 @@ async function iniciar(): Promise<duckdb.AsyncDuckDB> {
 
 const obterBanco = () => (banco ??= iniciar());
 
+/**
+ * O motor do DuckDB (worker e .wasm) vem do jsDelivr. Na primeira visita ele
+ * pode ser baixado antes de o service worker assumir a página, e aí fica só
+ * no cache do navegador, que pode ser apagado. Pedido de novo com o service
+ * worker no controle, entra no cache do app: o site passa a abrir sem internet.
+ */
+export async function guardarMotorNoCache(): Promise<void> {
+  if (import.meta.env.DEV) return;
+  const pacote = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
+  await Promise.all([pacote.mainModule, pacote.mainWorker].filter(Boolean).map((url) => fetch(url!)));
+}
+
 /** schema."tabela" pronto para consulta; baixa o arquivo só na primeira vez. */
 function garantirView(schema: string, repo: string, tabela: string): Promise<void> {
   const chave = `${schema}.${tabela}`;
