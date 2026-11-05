@@ -18,6 +18,10 @@ mesmas linhas e, a mais, a coluna arquivo_bronze, que a completa carrega.
         (sem ler dado) e imprime o JSON de (tabela, ano) pendentes.
 
     AREA=saude python silver-area.py --base caged --modo processar --tabela X --ano-inicio Y --ano-fim Y
+
+Várias áreas de uma vez: silver-areas.py baixa a tabela e o ano da completa
+UMA vez e chama este script para cada área com --fonte-local (lê da cópia
+baixada, e não do Hub), --sem-cartao e --silencioso.
 """
 import argparse
 import json
@@ -52,6 +56,11 @@ def _argumentos():
     # Refaz os anos do intervalo mesmo que já estejam na silver da área: a
     # listagem não enxerga um ano da completa que foi reprocessado depois.
     p.add_argument("--forcar", action="store_true")
+    # Usados pelo silver-areas.py, que recorta várias áreas de uma leitura só.
+    p.add_argument("--fonte-local", help="Pasta com a silver completa já baixada (<tabela>/ano_particao=...)")
+    p.add_argument("--sem-cartao", action="store_true", help="Não confere os cartões (quem chama já conferiu)")
+    p.add_argument("--silencioso", action="store_true", help="Sem aviso no Telegram quando dá certo")
+    p.add_argument("--json-saida", help="Verificar: grava o resultado neste arquivo, além de imprimir")
     args = p.parse_args()
     if args.modo == "processar" and not (args.ano_inicio and args.ano_fim != 9999):
         raise SystemExit("--modo processar precisa de --ano-inicio e --ano-fim")
@@ -154,6 +163,8 @@ def modo_verificar(args) -> int:
 
     saida = {"tem_novidade": bool(pares), "anos": pares}
     print(json.dumps(saida, ensure_ascii=False, indent=2))
+    if args.json_saida:
+        Path(args.json_saida).write_text(json.dumps(saida), encoding="utf-8")
 
     github_output = os.getenv("GITHUB_OUTPUT")
     if github_output:
@@ -163,16 +174,26 @@ def modo_verificar(args) -> int:
 
     situacao = "tem ano pendente, recortando." if pares else "verificado, já em dia."
     # Na fila agendada, "nada novo" toda semana em 10 áreas só faria barulho.
-    if saida["tem_novidade"] or os.getenv("GITHUB_EVENT_NAME") != "schedule":
+    if not args.silencioso and (saida["tem_novidade"] or os.getenv("GITHUB_EVENT_NAME") != "schedule"):
         telegram.notificar(f"🔎 *{args.rotulo}*: {situacao}")
     return 0
 
 
-def recortar(con, tabela: str, ano: int) -> bool:
-    """Um ano de uma tabela: lê da completa, filtra pela área, publica substituindo o ano."""
+def recortar(con, tabela: str, ano: int, fonte_local: str | None = None) -> bool:
+    """
+    Um ano de uma tabela: lê da completa, filtra pela área, publica substituindo o ano.
+    Com `fonte_local`, lê da cópia já baixada (ver silver-areas.py) em vez do Hub.
+    """
     inicio = time.time()
-    fonte = nuvem.fonte_parquet(nuvem.repo_silver(tabela, completa=True),
-                                f"{tabela}/ano_particao={ano}/**/*.parquet")
+    if fonte_local:
+        pasta_ano = Path(fonte_local) / tabela / f"ano_particao={ano}"
+        if not any(pasta_ano.rglob("*.parquet")):
+            print(f"   ⏭️  {tabela} {ano}: não está na cópia da silver completa")
+            return True
+        fonte = f"'{pasta_ano.as_posix()}/**/*.parquet'"
+    else:
+        fonte = nuvem.fonte_parquet(nuvem.repo_silver(tabela, completa=True),
+                                    f"{tabela}/ano_particao={ano}/**/*.parquet")
     leitura = f"read_parquet({fonte}, union_by_name = true, hive_partitioning = true)"
     try:
         colunas = nuvem.com_espera_na_leitura(
@@ -194,9 +215,12 @@ def recortar(con, tabela: str, ano: int) -> bool:
 
     # Mensal ou anual pelo CAMINHO na completa, não pela coluna: a RAIS é
     # anual e mesmo assim traz mes_particao (vazia) dentro do arquivo.
-    origem = nuvem.repo_silver(tabela, completa=True)
-    mensal = any(a.startswith(f"{tabela}/ano_particao={ano}/mes_particao=")
-                 for a in nuvem.arquivos_remotos(origem))
+    if fonte_local:
+        mensal = any(pasta_ano.glob("mes_particao=*"))
+    else:
+        origem = nuvem.repo_silver(tabela, completa=True)
+        mensal = any(a.startswith(f"{tabela}/ano_particao={ano}/mes_particao=")
+                     for a in nuvem.arquivos_remotos(origem))
     particao = ["ano_particao"] + (["mes_particao"] if mensal else [])
     destino = nuvem.DIR_TEMP / f"silver_{esc.AREA}" / tabela
     shutil.rmtree(destino, ignore_errors=True)
@@ -238,28 +262,30 @@ def modo_processar(args) -> int:
     sucesso = 0
     for tabela, ano in tarefas:
         try:
-            sucesso += recortar(con, tabela, ano)
+            sucesso += recortar(con, tabela, ano, args.fonte_local)
         except Exception as e:
             print(f"   ❌ {tabela} {ano}: {str(e)[:300]}")
 
     icone = "🏁" if sucesso == len(tarefas) else "⚠️"
-    telegram.notificar(f"{icone} *{args.rotulo}*: {sucesso}/{len(tarefas)} "
-                       f"({', '.join(args.tabela)} {args.ano_inicio})")
+    if sucesso < len(tarefas) or not args.silencioso:
+        telegram.notificar(f"{icone} *{args.rotulo}*: {sucesso}/{len(tarefas)} "
+                           f"({', '.join(args.tabela)} {args.ano_inicio})")
     return 0 if sucesso == len(tarefas) else 2
 
 
 def main() -> int:
     args = _argumentos()
     repo = nuvem.repo_silver(args.tabela[0])
-    publicar_raiz(repo, esc.AREA)
-    # O cartão da base fica na pasta dela. No CAGED ele é do
-    # gold-caged-consolidado (gold_caged/publicar_hf.py), que publica na mesma
-    # pasta: aqui só nasce, para os dois não se sobrescreverem a cada execução.
-    # Na RAIS o cartão é só deste script.
-    cartao = f"{nuvem.pasta_base(args.base)}/README.md"
-    if args.base == "rais" or not nuvem.existe_remoto(repo, cartao):
-        if nuvem.publicar_cartao(repo, _cartao(args.base, repo), cartao):
-            print(f"   📝 cartão de {repo}/{cartao} atualizado")
+    if not args.sem_cartao:
+        publicar_raiz(repo, esc.AREA)
+        # O cartão da base fica na pasta dela. No CAGED ele é do
+        # gold-caged-consolidado (gold_caged/publicar_hf.py), que publica na mesma
+        # pasta: aqui só nasce, para os dois não se sobrescreverem a cada execução.
+        # Na RAIS o cartão é só deste script.
+        cartao = f"{nuvem.pasta_base(args.base)}/README.md"
+        if args.base == "rais" or not nuvem.existe_remoto(repo, cartao):
+            if nuvem.publicar_cartao(repo, _cartao(args.base, repo), cartao):
+                print(f"   📝 cartão de {repo}/{cartao} atualizado")
     if args.modo == "verificar":
         return modo_verificar(args)
     return modo_processar(args)

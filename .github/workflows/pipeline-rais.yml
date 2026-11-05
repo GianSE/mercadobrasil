@@ -1,15 +1,20 @@
 name: Pipeline · RAIS (mensal)
 run-name: "RAIS · ${{ inputs.area || 'todas' }} · desde ${{ inputs.comecar_em || 'bronze' }}"
 
-# A fila da RAIS, que sai uma vez por ano, para todas as áreas. Roda sozinha
+# A RAIS, que sai uma vez por ano, para todas as áreas (ou uma). Roda sozinha
 # todo mês só para notar o ano novo assim que o MTE publicar: nos outros
 # meses, cada etapa verifica, não acha nada e para.
 #
 #   bronze-rais ┐
-#   dicionario  ┴─ silver-rais-completa ── uma área por vez (area-rais.yml):
-#                                           silver da área -> gold da RAIS
+#   dicionario  ┴─ silver-rais-completa
+#                       │
+#                  silver das áreas (silver-areas.yml): cada tabela/ano da
+#                  completa é baixado UMA vez e recortado para todas as áreas
+#                       │
+#                  gold, 2 áreas por vez, só as que ganharam ano novo
+#                  (area-rais.yml: gold da RAIS, estoque do mapa, hiato)
 #
-# O CAGED tem a fila dele (pipeline-caged.yml), semanal.
+# O CAGED tem o pipeline dele (pipeline-caged.yml), semanal.
 
 on:
   schedule:
@@ -17,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       area:
-        description: "Área (todas = uma de cada vez)"
+        description: "Área (todas = as 10, numa passada só na silver)"
         type: choice
         options: [todas, tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
         default: todas
@@ -37,21 +42,23 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       areas: ${{ steps.calc.outputs.areas }}
+      areas_texto: ${{ steps.calc.outputs.areas_texto }}
       bronze: ${{ steps.calc.outputs.bronze }}
       completa: ${{ steps.calc.outputs.completa }}
+      silver: ${{ steps.calc.outputs.silver }}
     steps:
       - id: calc
         run: |
           AREA="${{ inputs.area || 'todas' }}"
-          if [ "$AREA" = todas ]; then
-            echo 'areas=["tec","saude","educacao","agronegocio","financas","industria","construcao","logistica","comercio","engenharia"]' >> "$GITHUB_OUTPUT"
-          else
-            echo "areas=[\"$AREA\"]" >> "$GITHUB_OUTPUT"
-          fi
+          # As mesmas áreas do menu (e de tasks-python/_utils/areas.py).
+          [ "$AREA" = todas ] && TEXTO="tec saude educacao agronegocio financas industria construcao logistica comercio engenharia" || TEXTO="$AREA"
+          echo "areas_texto=$TEXTO" >> "$GITHUB_OUTPUT"
+          echo "areas=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1].split()))' "$TEXTO")" >> "$GITHUB_OUTPUT"
           COMECAR="${{ inputs.comecar_em || 'bronze' }}"
           echo "bronze=$([ "$COMECAR" = bronze ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "completa=$(case "$COMECAR" in bronze|"silver completa") echo true;; *) echo false;; esac)" >> "$GITHUB_OUTPUT"
-          echo "Áreas: $AREA | começando em: $COMECAR"
+          echo "silver=$([ "$COMECAR" = gold ] && echo false || echo true)" >> "$GITHUB_OUTPUT"
+          echo "Áreas: $TEXTO | começando em: $COMECAR"
 
   bronze-rais:
     needs: decidir
@@ -71,17 +78,26 @@ jobs:
     uses: ./.github/workflows/silver-rais-completa.yml
     secrets: inherit
 
-  area:
+  silver-areas:
     needs: [decidir, silver-rais-completa]
-    if: ${{ !failure() && !cancelled() }}
-    name: "${{ matrix.area }}"
+    if: needs.decidir.outputs.silver == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/silver-areas.yml
+    with:
+      base: rais
+      areas: ${{ needs.decidir.outputs.areas_texto }}
+    secrets: inherit
+
+  gold:
+    needs: [decidir, silver-areas]
+    # Começando na gold: todas as áreas pedidas. Senão, só as que ganharam ano novo.
+    if: ${{ !failure() && !cancelled() && (needs.decidir.outputs.silver == 'false' || needs.silver-areas.outputs.areas_com_novidade != '[]') }}
+    name: "Gold · ${{ matrix.area }}"
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 2
       matrix:
-        area: ${{ fromJson(needs.decidir.outputs.areas) }}
+        area: ${{ fromJson(needs.decidir.outputs.silver == 'false' && needs.decidir.outputs.areas || needs.silver-areas.outputs.areas_com_novidade) }}
     uses: ./.github/workflows/area-rais.yml
     with:
       area: ${{ matrix.area }}
-      comecar_em: ${{ inputs.comecar_em == 'gold' && 'gold' || 'silver' }}
     secrets: inherit

@@ -1,14 +1,15 @@
-name: Uso interno · RAIS de uma área
+name: Uso interno · Gold RAIS de uma área
 
-# Chamado pelo pipeline-rais.yml, uma área por vez. Recorta o ano novo na
-# silver da área e, só se havia ano novo, refaz a gold da RAIS:
+# Chamado pelo Pipeline · RAIS, uma vez por área que ganhou ano novo (2 áreas
+# por vez). A silver da área já foi recortada antes, junto com a das outras
+# áreas (silver-areas.yml). Aqui só a gold da RAIS:
 #
-#   silver-rais ─┬─ gold-rais                     (estoque, perfil, salários)
-#                ├─ gold-territorio --base rais   (o estoque; o fluxo vem da gold)
-#                └─ gold-modelos --base rais      (hiato e sobrevivência)
+#   gold-rais                     (estoque, perfil, salários)
+#   gold-territorio --base rais   (o estoque; o fluxo vem da gold)
+#   gold-modelos --base rais      (hiato e sobrevivência)
 #
 # Nada aqui lê o CAGED. O nowcast, que junta o estoque da RAIS com os meses do
-# CAGED, é refeito pela fila do CAGED na semana seguinte.
+# CAGED, é refeito pelo Pipeline · CAGED na semana seguinte.
 
 on:
   workflow_call:
@@ -16,31 +17,15 @@ on:
       area:
         type: string
         required: true
-      comecar_em:
-        description: "silver (verifica e recorta antes) ou gold (refaz a gold direto)"
-        type: string
-        default: silver
 
 jobs:
-  silver:
-    if: inputs.comecar_em == 'silver'
-    uses: ./.github/workflows/silver-rais.yml
-    with:
-      area: ${{ inputs.area }}
-    secrets: inherit
-
   gold-rais:
-    needs: silver
-    # Só com ano novo na silver da área, ou começando na gold, à mão.
-    if: ${{ !failure() && !cancelled() && (inputs.comecar_em == 'gold' || needs.silver.outputs.tem_novidade == 'true') }}
     uses: ./.github/workflows/gold-rais.yml
     with:
       area: ${{ inputs.area }}
     secrets: inherit
 
   gold-territorio:
-    needs: silver
-    if: ${{ !failure() && !cancelled() && (inputs.comecar_em == 'gold' || needs.silver.outputs.tem_novidade == 'true') }}
     uses: ./.github/workflows/gold-territorio.yml
     with:
       area: ${{ inputs.area }}
@@ -48,8 +33,6 @@ jobs:
     secrets: inherit
 
   gold-modelos:
-    needs: silver
-    if: ${{ !failure() && !cancelled() && (inputs.comecar_em == 'gold' || needs.silver.outputs.tem_novidade == 'true') }}
     uses: ./.github/workflows/gold-modelos.yml
     with:
       area: ${{ inputs.area }}

@@ -1,0 +1,45 @@
+name: Uso interno · Gold completa de uma área
+
+# Chamado pela Carga inicial, uma vez por área (2 áreas por vez): a gold
+# inteira, CAGED e RAIS, todos os anos. A silver da área já foi recortada
+# antes (silver-areas.yml).
+#
+#   gold-rais ── gold-modelos (o nowcast lê o rais_estoque_anual)
+#   gold-caged-consolidado (todos os anos)
+#   gold-territorio (as duas partes do mapa)
+
+on:
+  workflow_call:
+    inputs:
+      area:
+        type: string
+        required: true
+
+jobs:
+  gold-rais:
+    uses: ./.github/workflows/gold-rais.yml
+    with:
+      area: ${{ inputs.area }}
+    secrets: inherit
+
+  gold-caged:
+    uses: ./.github/workflows/gold-caged-consolidado.yml
+    with:
+      area: ${{ inputs.area }}
+      anos: todos
+    secrets: inherit
+
+  gold-territorio:
+    uses: ./.github/workflows/gold-territorio.yml
+    with:
+      area: ${{ inputs.area }}
+      base: ambas
+    secrets: inherit
+
+  gold-modelos:
+    needs: gold-rais
+    uses: ./.github/workflows/gold-modelos.yml
+    with:
+      area: ${{ inputs.area }}
+      base: ambas
+    secrets: inherit

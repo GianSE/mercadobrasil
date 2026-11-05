@@ -1,17 +1,22 @@
 name: Pipeline · CAGED (semanal)
 run-name: "CAGED · ${{ inputs.area || 'todas' }} · desde ${{ inputs.comecar_em || 'bronze' }}"
 
-# A fila do CAGED, que sai todo mês, para todas as áreas. Roda sozinha toda
+# O CAGED, que sai todo mês, para todas as áreas (ou uma). Roda sozinho toda
 # semana: o MTE não publica em dia fixo, e uma semana sem mês novo custa só as
 # verificações — cada etapa verifica antes e para quando não há nada.
 #
 #   bronze-caged ┐
-#   dicionario   ┴─ silver-caged-completa ── uma área por vez (area-caged.yml):
-#                                             silver da área -> gold do CAGED
+#   dicionario   ┴─ silver-caged-completa
+#                        │
+#                   silver das áreas (silver-areas.yml): cada tabela/ano da
+#                   completa é baixado UMA vez e recortado para todas as áreas
+#                        │
+#                   gold, 2 áreas por vez, só as que ganharam mês novo
+#                   (area-caged.yml: gold do CAGED, fluxo do mapa, previsão)
 #
-# A RAIS tem a fila dela (pipeline-rais.yml): nada aqui recalcula a RAIS.
-# O mercadotech (o TCC) atualiza a mesma bronze na segunda; esta fila roda na
-# terça para as duas nunca escreverem ao mesmo tempo.
+# A RAIS tem o pipeline dela (pipeline-rais.yml): nada aqui recalcula a RAIS.
+# O mercadotech (o TCC) atualiza a mesma bronze na segunda; este roda na
+# terça para os dois nunca escreverem ao mesmo tempo.
 
 on:
   schedule:
@@ -19,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       area:
-        description: "Área (todas = uma de cada vez)"
+        description: "Área (todas = as 10, numa passada só na silver)"
         type: choice
         options: [todas, tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
         default: todas
@@ -34,7 +39,7 @@ on:
         options: [recentes, todos]
         default: recentes
 
-# Uma fila do CAGED por vez: uma semana atrasada espera a anterior terminar.
+# Um Pipeline · CAGED por vez: uma semana atrasada espera a anterior terminar.
 concurrency:
   group: pipeline-caged
   cancel-in-progress: false
@@ -45,21 +50,23 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       areas: ${{ steps.calc.outputs.areas }}
+      areas_texto: ${{ steps.calc.outputs.areas_texto }}
       bronze: ${{ steps.calc.outputs.bronze }}
       completa: ${{ steps.calc.outputs.completa }}
+      silver: ${{ steps.calc.outputs.silver }}
     steps:
       - id: calc
         run: |
           AREA="${{ inputs.area || 'todas' }}"
-          if [ "$AREA" = todas ]; then
-            echo 'areas=["tec","saude","educacao","agronegocio","financas","industria","construcao","logistica","comercio","engenharia"]' >> "$GITHUB_OUTPUT"
-          else
-            echo "areas=[\"$AREA\"]" >> "$GITHUB_OUTPUT"
-          fi
+          # As mesmas áreas do menu (e de tasks-python/_utils/areas.py).
+          [ "$AREA" = todas ] && TEXTO="tec saude educacao agronegocio financas industria construcao logistica comercio engenharia" || TEXTO="$AREA"
+          echo "areas_texto=$TEXTO" >> "$GITHUB_OUTPUT"
+          echo "areas=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1].split()))' "$TEXTO")" >> "$GITHUB_OUTPUT"
           COMECAR="${{ inputs.comecar_em || 'bronze' }}"
           echo "bronze=$([ "$COMECAR" = bronze ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           echo "completa=$(case "$COMECAR" in bronze|"silver completa") echo true;; *) echo false;; esac)" >> "$GITHUB_OUTPUT"
-          echo "Áreas: $AREA | começando em: $COMECAR | anos da gold: ${{ inputs.anos_gold || 'recentes' }}"
+          echo "silver=$([ "$COMECAR" = gold ] && echo false || echo true)" >> "$GITHUB_OUTPUT"
+          echo "Áreas: $TEXTO | começando em: $COMECAR | anos da gold: ${{ inputs.anos_gold || 'recentes' }}"
 
   bronze-caged:
     needs: decidir
@@ -79,19 +86,29 @@ jobs:
     uses: ./.github/workflows/silver-caged-completa.yml
     secrets: inherit
 
-  area:
+  silver-areas:
     needs: [decidir, silver-caged-completa]
-    if: ${{ !failure() && !cancelled() }}
-    name: "${{ matrix.area }}"
+    if: needs.decidir.outputs.silver == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/silver-areas.yml
+    with:
+      base: caged
+      areas: ${{ needs.decidir.outputs.areas_texto }}
+    secrets: inherit
+
+  gold:
+    needs: [decidir, silver-areas]
+    # Começando na gold: todas as áreas pedidas. Senão, só as que ganharam mês novo.
+    if: ${{ !failure() && !cancelled() && (needs.decidir.outputs.silver == 'false' || needs.silver-areas.outputs.areas_com_novidade != '[]') }}
+    name: "Gold · ${{ matrix.area }}"
     strategy:
       fail-fast: false
-      # Uma área por vez: todas leem a mesma silver completa no Hub.
-      max-parallel: 1
+      # Duas áreas por vez: cada uma tem o próprio repositório, e a leitura da
+      # silver de cada uma é uma cópia só para o disco do runner.
+      max-parallel: 2
       matrix:
-        area: ${{ fromJson(needs.decidir.outputs.areas) }}
+        area: ${{ fromJson(needs.decidir.outputs.silver == 'false' && needs.decidir.outputs.areas || needs.silver-areas.outputs.areas_com_novidade) }}
     uses: ./.github/workflows/area-caged.yml
     with:
       area: ${{ matrix.area }}
-      comecar_em: ${{ inputs.comecar_em == 'gold' && 'gold' || 'silver' }}
       anos_gold: ${{ inputs.anos_gold || 'recentes' }}
     secrets: inherit

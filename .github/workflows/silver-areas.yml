@@ -1,0 +1,86 @@
+name: Uso interno · Silver de várias áreas
+
+# Chamado pelos Pipelines e pela Carga inicial. Recorta a silver de várias
+# áreas lendo a silver completa UMA vez por tabela e ano (silver-areas.py):
+# cada job baixa um tabela/ano para o disco do runner e grava a silver de
+# todas as áreas que precisam dele, cada uma no seu repositório.
+#
+#   verificar ── uma linha por tabela/ano pendente, com as áreas que o pedem
+#        │
+#   processar (4 tabela/ano por vez) ── baixa uma vez, recorta cada área
+
+on:
+  workflow_call:
+    inputs:
+      base:
+        description: "caged ou rais"
+        type: string
+        required: true
+      areas:
+        description: "Áreas separadas por espaço"
+        type: string
+        required: true
+      ano_inicio:
+        type: string
+      ano_fim:
+        type: string
+    outputs:
+      areas_com_novidade:
+        description: "JSON com as áreas que ganharam ano ou mês novo"
+        value: ${{ jobs.verificar.outputs.areas_com_novidade }}
+
+env:
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  PYTHONUNBUFFERED: "1"
+  HF_HUB_DISABLE_PROGRESS_BARS: "1"
+
+jobs:
+  verificar:
+    name: "Verificar silver ${{ inputs.base }} das áreas"
+    runs-on: ubuntu-latest
+    outputs:
+      tem_novidade: ${{ steps.chk.outputs.tem_novidade }}
+      itens: ${{ steps.chk.outputs.itens }}
+      areas_com_novidade: ${{ steps.chk.outputs.areas_com_novidade }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/python
+
+      - id: chk
+        working-directory: tasks-python/2-silver
+        env:
+          ANO_INICIO: ${{ inputs.ano_inicio }}
+          ANO_FIM: ${{ inputs.ano_fim }}
+        run: |
+          python silver-areas.py --base ${{ inputs.base }} --modo verificar --areas "${{ inputs.areas }}" \
+            --ano-inicio "${ANO_INICIO:-2007}" --ano-fim "${ANO_FIM:-9999}"
+
+  processar:
+    name: "${{ matrix.item.tabela }} ${{ matrix.item.ano }}"
+    needs: verificar
+    if: needs.verificar.outputs.tem_novidade == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      # Um ano inteiro da RAIS completa passa de alguns GB: vai para o disco
+      # grande do runner (~70 GB), não para os ~14 GB do sistema.
+      STAGING_DIR: /mnt/staging
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        item: ${{ fromJson(needs.verificar.outputs.itens) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/python
+
+      - name: Staging no disco grande do runner
+        run: sudo mkdir -p /mnt/staging && sudo chown -R "$USER" /mnt/staging
+
+      - name: "${{ matrix.item.tabela }} ${{ matrix.item.ano }} → ${{ matrix.item.areas }}"
+        working-directory: tasks-python/2-silver
+        run: |
+          python silver-areas.py --base ${{ inputs.base }} --modo processar \
+            --tabela ${{ matrix.item.tabela }} --ano ${{ matrix.item.ano }} --areas "${{ matrix.item.areas }}"
