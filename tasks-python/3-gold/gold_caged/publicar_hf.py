@@ -333,11 +333,7 @@ def main() -> int:
         commit_message=f"Consolidados por ano: {len(arquivos)} arquivo(s)",
     )
 
-    base = f"https://huggingface.co/datasets/{args.repo}/resolve/main/{PASTA}"
-    print(f"\n🏁 {total / 1e6:.1f} MB publicados.")
-    print("\nConfigure o dashboard com:")
-    print(f"   DADOS_URL_BASE={base}")
-    print("\nNo Streamlit Cloud, isso vai em Settings > Secrets ou como variável de ambiente.")
+    print(f"\n🏁 {total / 1e6:.1f} MB publicados em https://huggingface.co/datasets/{args.repo}/tree/main/{PASTA}")
     return 0
 
 
