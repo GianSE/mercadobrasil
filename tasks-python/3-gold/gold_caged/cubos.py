@@ -46,7 +46,7 @@ UF_SIGLA = {
 
 # Grão de cada cubo: as dimensões que o site filtra ou quebra.
 CUBOS = {
-    "caged_cubo": "ano, uf, setor, lente, area_ti, sexo, raca_cor, escolaridade, faixa_idade",
+    "caged_cubo": "ano, uf, setor, lente, subarea, sexo, raca_cor, escolaridade, faixa_idade",
     "caged_ocupacao": "ano, ocupacao, lente",
     # Mês a mês por UF: o fluxo mensal do site respeitando o filtro de estado
     # (a serie_mensal dos modelos é só nacional).
@@ -87,7 +87,7 @@ def montar(con, origem: str, destino: Path) -> list[str]:
             ano::INTEGER AS ano,
             mes::INTEGER AS mes,
             CASE upper(strip_accents(trim(uf))) {casos} ELSE NULL END AS uf,
-            setor, ocupacao, area_ti, sexo, raca_cor, escolaridade,
+            setor, ocupacao, subarea, sexo, raca_cor, escolaridade,
             CASE WHEN {cnae} AND {cbo} THEN '{esc.LENTE_DENTRO}'
                  WHEN {cbo}            THEN '{esc.LENTE_FORA}'
                  ELSE '{esc.LENTE_SO_SETOR}' END AS lente,

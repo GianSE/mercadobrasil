@@ -12,12 +12,12 @@ delas. Cada área define as mesmas peças:
 e `escopo_tecnologia` aplica as da área que a variável de ambiente AREA pedir
 (os workflows passam `AREA` pelo input). Sem AREA é TI.
 
-Os nomes das colunas não mudam com a área — `setor_ti`, `ocupacao_ti`,
-`area_ti` continuam se chamando assim na gold de saúde ou de educação, e lá
-querem dizer "setor da área", "ocupação da área" e "subárea" (a silver não
-tem colunas de classificação: é o microdado traduzido, só recortado).
-Renomear tocaria todo o código validado de TI; manter o esquema igual deixa
-a mesma gold e o mesmo site lerem qualquer área.
+Os nomes das colunas não mudam com a área: `setor_da_area` (o
+estabelecimento é do setor da área, pela CNAE), `ocupacao_da_area` (a
+ocupação é da área, pela CBO) e `subarea` (a subárea da ocupação) se chamam
+assim na gold de saúde, de educação ou de TI, e o site lê as mesmas colunas
+em toda área. (A silver não tem colunas de classificação: é o microdado
+traduzido, só recortado; elas nascem na gold.)
 
 Os códigos de educação e saúde foram tirados de
 publicacao/referencias/{cbos,cnaes}.parquet (o dicionário do MTE com a

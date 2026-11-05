@@ -1,0 +1,55 @@
+name: Uso único · Renomear colunas para os nomes genéricos
+
+# Troca, nos dados JÁ publicados de cada área, setor_ti/ocupacao_ti/area_ti
+# por setor_da_area/ocupacao_da_area/subarea (_utils/renomear_colunas.py).
+# Só renomeia: não refaz nada. Pode rodar de novo; o que já foi trocado é
+# pulado. Não rode os Pipelines enquanto este estiver rodando. Depois que
+# todas as áreas passarem, este workflow e o script podem ser apagados.
+
+on:
+  workflow_dispatch:
+    inputs:
+      areas:
+        description: "Áreas separadas por espaço (vazio = todas)"
+        default: ""
+
+env:
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  PYTHONUNBUFFERED: "1"
+  HF_HUB_DISABLE_PROGRESS_BARS: "1"
+
+jobs:
+  listar:
+    runs-on: ubuntu-latest
+    outputs:
+      areas: ${{ steps.lista.outputs.areas }}
+    steps:
+      - id: lista
+        run: |
+          LISTA="${{ inputs.areas }}"
+          [ -n "$LISTA" ] || LISTA="tec saude educacao agronegocio financas industria construcao logistica comercio engenharia"
+          echo "areas=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1].split()))' "$LISTA")" >> "$GITHUB_OUTPUT"
+
+  renomear:
+    needs: listar
+    name: "Renomear · ${{ matrix.area }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      AREA: ${{ matrix.area }}
+      STAGING_DIR: /mnt/staging
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        area: ${{ fromJson(needs.listar.outputs.areas) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/python
+
+      - name: Staging no disco grande do runner
+        run: sudo mkdir -p /mnt/staging && sudo chown -R "$USER" /mnt/staging
+
+      - name: Renomeia ${{ matrix.area }}
+        working-directory: tasks-python
+        run: python _utils/renomear_colunas.py

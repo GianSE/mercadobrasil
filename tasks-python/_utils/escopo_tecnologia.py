@@ -304,8 +304,8 @@ def sql_classificacao(col_cnae: str = "subclasse",
     ocupacao = (f"CASE WHEN {sql_filtro_cbo(col_cbo)} THEN true ELSE false END"
                 if col_cbo else "false")
     return f"""
-        CASE WHEN {sql_filtro_cnae(col_cnae)} THEN true ELSE false END AS setor_ti,
-        {ocupacao} AS ocupacao_ti
+        CASE WHEN {sql_filtro_cnae(col_cnae)} THEN true ELSE false END AS setor_da_area,
+        {ocupacao} AS ocupacao_da_area
     """
 
 

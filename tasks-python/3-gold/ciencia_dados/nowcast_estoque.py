@@ -60,7 +60,7 @@ warnings.simplefilter("ignore")
 SQL_ESTOQUE = f"""
 SELECT ano, sum(estoque_3112) AS estoque
 FROM read_parquet('{nuvem.caminho_gold('rais_estoque_anual')}')
-WHERE setor_ti OR ocupacao_ti
+WHERE setor_da_area OR ocupacao_da_area
 GROUP BY 1 ORDER BY 1
 """
 

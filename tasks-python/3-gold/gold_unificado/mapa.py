@@ -143,7 +143,7 @@ def _sql_parte(parte: str, nivel: str, ano_inicio: int = 0) -> str:
                count(*) FILTER (WHERE vinculo_ativo_3112 = '1') AS estoque,
                round(avg({REMUN}), 2)                           AS remuneracao_sm,
                round(median({REMUN}), 2)                        AS remuneracao_sm_mediana
-        FROM ({_rais(ano_inicio)}) WHERE setor_ti OR ocupacao_ti GROUP BY ALL
+        FROM ({_rais(ano_inicio)}) WHERE setor_da_area OR ocupacao_da_area GROUP BY ALL
     """
 
 

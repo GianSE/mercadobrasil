@@ -221,12 +221,12 @@ METRICAS = f"""
 AGREGADOS = {
     # A série-título: estoque de TI ano a ano, nas duas lentes.
     "rais_estoque_anual": f"""
-        SELECT ano_particao AS ano, setor_ti, ocupacao_ti, {METRICAS}
+        SELECT ano_particao AS ano, setor_da_area, ocupacao_da_area, {METRICAS}
         FROM ({BASE_VINC})
         GROUP BY 1, 2, 3 ORDER BY 1
     """,
     "rais_estoque_uf": f"""
-        SELECT ano_particao AS ano, {UF} AS uf, setor_ti, ocupacao_ti, {METRICAS}
+        SELECT ano_particao AS ano, {UF} AS uf, setor_da_area, ocupacao_da_area, {METRICAS}
         FROM ({BASE_VINC})
         WHERE municipio_descricao IS NOT NULL
         GROUP BY 1, 2, 3, 4 ORDER BY 1, 2
@@ -236,10 +236,10 @@ AGREGADOS = {
     # TI — a recepcionista da software house não pertence a nenhuma área.
     "rais_estoque_area": f"""
         SELECT ano_particao AS ano,
-               {esc.sql_area_ti(COL_CBO)} AS area_ti,
-               setor_ti, {METRICAS}
+               {esc.sql_area_ti(COL_CBO)} AS subarea,
+               setor_da_area, {METRICAS}
         FROM ({BASE_VINC})
-        WHERE ocupacao_ti
+        WHERE ocupacao_da_area
         GROUP BY 1, 2, 3 ORDER BY 1, 2
     """,
     # Sexo, raça e escolaridade juntos permitem ler o hiato salarial DENTRO de
@@ -250,14 +250,14 @@ AGREGADOS = {
                {sql_canonico("sexo", "sexo_trabalhador_descricao")} AS sexo,
                {sql_canonico("raca_cor", "raca_cor_descricao")} AS raca_cor,
                {sql_canonico("escolaridade", "escolaridade_apos_2005_descricao")} AS escolaridade,
-               setor_ti, ocupacao_ti, {METRICAS}
+               setor_da_area, ocupacao_da_area, {METRICAS}
         FROM ({BASE_VINC})
         GROUP BY 1, 2, 3, 4, 5, 6 ORDER BY 1
     """,
     "rais_remuneracao_ocupacao": f"""
         SELECT ano_particao AS ano,
                cbo_ocupacao_2002_descricao AS ocupacao,
-               setor_ti, {METRICAS}
+               setor_da_area, {METRICAS}
         FROM ({BASE_VINC})
         WHERE cbo_ocupacao_2002_descricao IS NOT NULL
         GROUP BY 1, 2, 3
@@ -266,7 +266,7 @@ AGREGADOS = {
     """,
     "rais_estoque_municipio": f"""
         SELECT ano_particao AS ano, {UF} AS uf,
-               municipio_descricao AS municipio, ocupacao_ti, {METRICAS}
+               municipio_descricao AS municipio, ocupacao_da_area, {METRICAS}
         FROM ({BASE_VINC})
         WHERE municipio_descricao IS NOT NULL
         GROUP BY 1, 2, 3, 4 ORDER BY 1, 5 DESC
@@ -274,12 +274,12 @@ AGREGADOS = {
     # O achado central, agora sobre o estoque: quanto do trabalho de TI
     # acontece FORA do setor de TI — e quanto ele paga em cada lado.
     "rais_setor_vs_ocupacao": f"""
-        SELECT ano_particao AS ano, setor_ti, ocupacao_ti,
+        SELECT ano_particao AS ano, setor_da_area, ocupacao_da_area,
                cnae_20_subclasse_descricao AS setor_empresa,
                -- O código, para o site montar a hierarquia da CNAE (divisão > subclasse).
                any_value({COL_CNAE}) AS cnae, {METRICAS}
         FROM ({BASE_VINC})
-        WHERE ocupacao_ti OR setor_ti
+        WHERE ocupacao_da_area OR setor_da_area
         GROUP BY 1, 2, 3, 4 ORDER BY 1, 6 DESC
     """,
     # A documentação do recorte, calculada do dado: que códigos CBO de fato
@@ -296,7 +296,7 @@ AGREGADOS = {
                count(*) FILTER (WHERE {ATIVO}) AS estoque_3112,
                count(*)                        AS vinculos_no_ano
         FROM ({BASE_VINC})
-        WHERE ocupacao_ti
+        WHERE ocupacao_da_area
         GROUP BY 1, 2, 3, 5
         ORDER BY 1, 3, 2
     """,
@@ -310,19 +310,19 @@ AGREGADOS = {
     "rais_mediana": f"""
         SELECT ano,
                CASE WHEN grouping(lente) = 0 THEN 'lente'
-                    WHEN grouping(area_ti) = 0 THEN 'area'
+                    WHEN grouping(subarea) = 0 THEN 'area'
                     WHEN grouping(escolaridade) = 0 THEN 'escolaridade'
                     WHEN grouping(uf) = 0 THEN 'uf'
                     WHEN grouping(sp) = 0 THEN 'sp'
                     ELSE 'total' END                       AS recorte,
-               coalesce(lente, area_ti, escolaridade, uf, sp, '{esc.SIGLA}') AS grupo,
+               coalesce(lente, subarea, escolaridade, uf, sp, '{esc.SIGLA}') AS grupo,
                round(median(remun), 2)                     AS mediana_sm,
                count(remun)                                AS vinculos
         FROM (
             SELECT ano_particao AS ano,
-                   CASE WHEN ocupacao_ti AND setor_ti THEN 'dentro'
-                        WHEN ocupacao_ti THEN 'fora' ELSE 'outra' END AS lente,
-                   CASE WHEN ocupacao_ti THEN {esc.sql_area_ti(COL_CBO)} END AS area_ti,
+                   CASE WHEN ocupacao_da_area AND setor_da_area THEN 'dentro'
+                        WHEN ocupacao_da_area THEN 'fora' ELSE 'outra' END AS lente,
+                   CASE WHEN ocupacao_da_area THEN {esc.sql_area_ti(COL_CBO)} END AS subarea,
                    -- A RAIS separa mestrado e doutorado; o rótulo canônico os
                    -- junta em "Pós-graduação" porque o Novo CAGED não separa.
                    -- Aqui o dado é só da RAIS: os dois níveis ficam. (MBA e
@@ -336,9 +336,9 @@ AGREGADOS = {
                    {_remuneracao('vl_remun_media_sm')}        AS remun
             FROM ({BASE_VINC})
         )
-        GROUP BY GROUPING SETS ((ano), (ano, lente), (ano, area_ti), (ano, escolaridade), (ano, uf), (ano, sp))
+        GROUP BY GROUPING SETS ((ano), (ano, lente), (ano, subarea), (ano, escolaridade), (ano, uf), (ano, sp))
         -- Grupo nulo (sem área, sem UF) não é recorte: sai.
-        HAVING NOT ((grouping(area_ti) = 0 AND area_ti IS NULL)
+        HAVING NOT ((grouping(subarea) = 0 AND subarea IS NULL)
                  OR (grouping(escolaridade) = 0 AND (escolaridade IS NULL OR escolaridade = 'Não informado'))
                  OR (grouping(uf) = 0 AND uf IS NULL)
                  OR (grouping(sp) = 0 AND sp IS NULL))
@@ -350,7 +350,7 @@ AGREGADOS = {
     # interpolando dentro da faixa do meio — erro máximo de 0,05 SM, contra a
     # média de medianas, que não tem limite de erro nenhum.
     "rais_remuneracao_hist": f"""
-        SELECT ano_particao AS ano, {UF} AS uf, setor_ti, ocupacao_ti,
+        SELECT ano_particao AS ano, {UF} AS uf, setor_da_area, ocupacao_da_area,
                least(floor(vl_remun_media_sm / 0.1), 500)::SMALLINT AS faixa,
                count(*) AS vinculos
         FROM ({BASE_VINC})
@@ -363,7 +363,7 @@ AGREGADOS = {
         SELECT ano_particao AS ano, {UF} AS uf,
                tamanho_estabelecimento_descricao AS porte,
                natureza_juridica_descricao AS natureza_juridica,
-               setor_ti,
+               setor_da_area,
                count(*)                           AS estabelecimentos,
                sum(qtd_vinculos_ativos)           AS vinculos_ativos,
                sum(qtd_vinculos_clt)              AS vinculos_clt,
