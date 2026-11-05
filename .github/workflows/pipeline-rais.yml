@@ -1,0 +1,85 @@
+name: Pipeline RAIS (mensal)
+run-name: "Pipeline RAIS · ${{ inputs.area || 'todas' }} · desde ${{ inputs.comecar_em || 'bronze' }}"
+
+# A fila da RAIS, que sai uma vez por ano, para todas as áreas. Roda sozinha
+# todo mês só para notar o ano novo assim que o MTE publicar: nos outros
+# meses, cada etapa verifica, não acha nada e para.
+#
+#   bronze-rais ┐
+#   dicionario  ┴─ silver-rais-completa ── uma área por vez (area-rais.yml):
+#                                           silver da área -> gold da RAIS
+#
+# O CAGED tem a fila dele (pipeline-caged.yml), semanal.
+
+on:
+  schedule:
+    - cron: "0 9 15 * *" # todo dia 15, 09:00 UTC (06:00 em Brasília)
+  workflow_dispatch:
+    inputs:
+      area:
+        description: "Área (todas = uma de cada vez)"
+        type: choice
+        options: [todas, tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
+        default: todas
+      comecar_em:
+        description: "bronze = tudo; silver = só as áreas; gold = refaz a gold sem verificar a silver"
+        type: choice
+        options: [bronze, silver, gold]
+        default: bronze
+
+concurrency:
+  group: pipeline-rais
+  cancel-in-progress: false
+
+jobs:
+  decidir:
+    name: Decidir áreas e camadas
+    runs-on: ubuntu-latest
+    outputs:
+      areas: ${{ steps.calc.outputs.areas }}
+      comuns: ${{ steps.calc.outputs.comuns }}
+    steps:
+      - id: calc
+        run: |
+          AREA="${{ inputs.area || 'todas' }}"
+          if [ "$AREA" = todas ]; then
+            echo 'areas=["tec","saude","educacao","agronegocio","financas","industria","construcao","logistica","comercio","engenharia"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "areas=[\"$AREA\"]" >> "$GITHUB_OUTPUT"
+          fi
+          COMECAR="${{ inputs.comecar_em || 'bronze' }}"
+          echo "comuns=$([ "$COMECAR" = bronze ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "Áreas: $AREA | começando em: $COMECAR"
+
+  bronze-rais:
+    needs: decidir
+    if: needs.decidir.outputs.comuns == 'true'
+    uses: ./.github/workflows/bronze-rais.yml
+    secrets: inherit
+
+  dicionario:
+    needs: decidir
+    if: needs.decidir.outputs.comuns == 'true'
+    uses: ./.github/workflows/dicionario.yml
+    secrets: inherit
+
+  silver-rais-completa:
+    needs: [decidir, bronze-rais, dicionario]
+    if: needs.decidir.outputs.comuns == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/silver-rais-completa.yml
+    secrets: inherit
+
+  area:
+    needs: [decidir, silver-rais-completa]
+    if: ${{ !failure() && !cancelled() }}
+    name: "${{ matrix.area }}"
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        area: ${{ fromJson(needs.decidir.outputs.areas) }}
+    uses: ./.github/workflows/area-rais.yml
+    with:
+      area: ${{ matrix.area }}
+      comecar_em: ${{ inputs.comecar_em == 'gold' && 'gold' || 'silver' }}
+    secrets: inherit

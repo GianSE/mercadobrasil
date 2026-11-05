@@ -33,6 +33,10 @@ on:
       forcar:
         type: boolean
         default: false
+    outputs:
+      tem_novidade:
+        description: "true se havia ano ou mês novo para recortar"
+        value: ${{ jobs.verificar.outputs.tem_novidade }}
 
 env:
   AREA: ${{ inputs.area }}

@@ -16,6 +16,7 @@ Publica a própria fatia em Gianpedro/gold-analise-mercado-ti ao final.
 Uso:
     python gold-modelos.py
 """
+import argparse
 import sys
 from pathlib import Path
 
@@ -47,11 +48,20 @@ def _semear_rais_estoque_anual() -> None:
 
 
 def main() -> int:
-    _semear_rais_estoque_anual()
+    p = argparse.ArgumentParser(description="Gold modelos da área.")
+    p.add_argument("--base", choices=("caged", "rais", "ambas"), default="ambas",
+                   help="caged: previsão e nowcast (fila mensal); rais: hiato e sobrevivência (fila anual).")
+    base = p.parse_args().base
+    # A publicação, chamada abaixo, lê os próprios argumentos de sys.argv.
+    sys.argv = sys.argv[:1]
+
+    # Só o nowcast (CAGED) lê o estoque da RAIS publicado.
+    if base != "rais":
+        _semear_rais_estoque_anual()
 
     from ciencia_dados import materializar
 
-    codigo = materializar.main()
+    codigo = materializar.main(["--base", base])
     if codigo != 0:
         telegram.notificar("⚠️ *Gold modelos*: concluído com falha, publicação pulada.")
         return codigo
@@ -64,8 +74,9 @@ def main() -> int:
         telegram.notificar("⚠️ *Gold modelos*: materializado, mas a publicação falhou.")
         return codigo_publicar
 
-    telegram.notificar("🏁 *Gold modelos*: previsão, nowcast, hiato e sobrevivência "
-                       "materializados e publicados.")
+    feitos = {"caged": "previsão e nowcast", "rais": "hiato e sobrevivência",
+              "ambas": "previsão, nowcast, hiato e sobrevivência"}[base]
+    telegram.notificar(f"🏁 *Gold modelos*: {feitos} materializados e publicados.")
     return 0
 
 

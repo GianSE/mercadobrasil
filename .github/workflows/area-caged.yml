@@ -1,0 +1,61 @@
+name: Fila do CAGED de uma área
+
+# Chamado pelo pipeline-caged.yml, uma área por vez. Recorta o mês novo na
+# silver da área e, só se havia mês novo, refaz a gold do CAGED:
+#
+#   silver-caged ─┬─ gold-caged-consolidado  (só os anos recentes; cubos mesclados)
+#                 ├─ gold-territorio --base caged  (o fluxo; o estoque vem da gold)
+#                 └─ gold-modelos --base caged     (previsão e nowcast)
+#
+# Nada aqui lê a RAIS, a não ser o rais_estoque_anual já publicado (nowcast).
+
+on:
+  workflow_call:
+    inputs:
+      area:
+        type: string
+        required: true
+      comecar_em:
+        description: "silver (verifica e recorta antes) ou gold (refaz a gold direto)"
+        type: string
+        default: silver
+      anos_gold:
+        description: "recentes ou todos (ver gold-caged-consolidado.py)"
+        type: string
+        default: recentes
+
+jobs:
+  silver:
+    if: inputs.comecar_em == 'silver'
+    uses: ./.github/workflows/silver-caged.yml
+    with:
+      area: ${{ inputs.area }}
+    secrets: inherit
+
+  gold-caged:
+    needs: silver
+    # Só com mês novo na silver da área, ou começando na gold, à mão.
+    if: ${{ !failure() && !cancelled() && (inputs.comecar_em == 'gold' || needs.silver.outputs.tem_novidade == 'true') }}
+    uses: ./.github/workflows/gold-caged-consolidado.yml
+    with:
+      area: ${{ inputs.area }}
+      anos: ${{ inputs.anos_gold }}
+    secrets: inherit
+
+  gold-territorio:
+    needs: silver
+    if: ${{ !failure() && !cancelled() && (inputs.comecar_em == 'gold' || needs.silver.outputs.tem_novidade == 'true') }}
+    uses: ./.github/workflows/gold-territorio.yml
+    with:
+      area: ${{ inputs.area }}
+      base: caged
+    secrets: inherit
+
+  gold-modelos:
+    needs: silver
+    if: ${{ !failure() && !cancelled() && (inputs.comecar_em == 'gold' || needs.silver.outputs.tem_novidade == 'true') }}
+    uses: ./.github/workflows/gold-modelos.yml
+    with:
+      area: ${{ inputs.area }}
+      base: caged
+    secrets: inherit

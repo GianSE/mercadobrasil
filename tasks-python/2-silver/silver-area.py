@@ -162,7 +162,9 @@ def modo_verificar(args) -> int:
             f.write(f"anos={json.dumps(saida['anos'])}\n")
 
     situacao = "tem ano pendente, recortando." if pares else "verificado, já em dia."
-    telegram.notificar(f"🔎 *{args.rotulo}*: {situacao}")
+    # Na fila agendada, "nada novo" toda semana em 10 áreas só faria barulho.
+    if saida["tem_novidade"] or os.getenv("GITHUB_EVENT_NAME") != "schedule":
+        telegram.notificar(f"🔎 *{args.rotulo}*: {situacao}")
     return 0
 
 

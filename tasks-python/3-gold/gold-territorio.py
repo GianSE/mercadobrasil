@@ -2,6 +2,11 @@
 Gold território — mapa (RAIS + CAGED) e os perfis de município (clusters),
 a partir das silvers já publicadas.
 
+`--base caged` refaz só o fluxo do mapa (a fila mensal do CAGED), `--base
+rais` só o estoque (a fila anual da RAIS); a outra parte vem da gold
+publicada (ver gold_unificado/mapa.py). Os clusters, que custam segundos,
+rodam depois em qualquer caso: usam as duas partes.
+
 Independente de gold-rais.py: mapa.py lê a silver direto, não o agregado
 da RAIS. Clusters depende do MAPA desta mesma rodada (mapa_municipio), por
 isso os dois ficam juntos num script só em vez de dois jobs separados.
@@ -10,8 +15,9 @@ Publica a própria fatia em Gianpedro/gold-analise-mercado-ti ao final
 (ver gold-rais.py para o motivo: cada job roda num runner novo).
 
 Uso:
-    python gold-territorio.py
+    python gold-territorio.py --base caged
 """
+import argparse
 import sys
 from pathlib import Path
 
@@ -50,13 +56,24 @@ def _semear_geo_municipios() -> None:
     print(f"⚠️  geo_municipios.parquet ainda não existe no Hub ({erro})")
 
 
+def _base() -> str:
+    p = argparse.ArgumentParser(description="Gold território da área.")
+    p.add_argument("--base", choices=("caged", "rais", "ambas"), default="ambas")
+    base = p.parse_args().base
+    # Os módulos chamados abaixo (clusters, publicação) leem os próprios
+    # argumentos de sys.argv: sem isto, recusariam o --base.
+    sys.argv = sys.argv[:1]
+    return base
+
+
 def main() -> int:
+    base = _base()
     _semear_geo_municipios()
 
     from gold_unificado import mapa
     from ciencia_dados import clusters_municipios
 
-    codigo_mapa = mapa.main()
+    codigo_mapa = mapa.construir(base)
     if codigo_mapa != 0:
         telegram.notificar("⚠️ *Gold território*: mapa falhou, clusters pulado.")
         return codigo_mapa
@@ -80,7 +97,7 @@ def main() -> int:
         telegram.notificar("⚠️ *Gold território*: reconstruído, mas a publicação falhou.")
         return codigo_publicar
 
-    telegram.notificar("🏁 *Gold território*: mapa e clusters reconstruídos e publicados.")
+    telegram.notificar(f"🏁 *Gold território* ({base}): mapa e clusters reconstruídos e publicados.")
     return 0
 
 

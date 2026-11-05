@@ -169,21 +169,23 @@ confira antes de publicar números.
         "recortados para o mercado de\ntrabalho em tecnologia.", f"recortados para o mercado de\ntrabalho em {esc.SIGLA}.")
 
 
-def _tabela_de_arquivos(arquivos: list[Path]) -> str:
+def _tabela_de_arquivos(arquivos: dict[str, int]) -> str:
     """
     Monta a tabela do card por TABELA (um intervalo de anos cada), a partir
-    do que está REALMENTE sendo publicado — fixar a lista no texto faria o
-    card prometer arquivos ausentes numa publicação parcial.
+    do que vai ficar REALMENTE no repositório (nome -> tamanho: o já
+    publicado mais o desta rodada) — fixar a lista no texto faria o card
+    prometer arquivos ausentes, e olhar só esta rodada o faria esconder os
+    anos antigos numa publicação só dos anos recentes.
     """
     por_tabela: dict[str, list[int]] = {}
     tamanho: dict[str, int] = {}
-    for a in arquivos:
-        m = PADRAO_ANO.match(a.name)
-        if not m:
+    for nome, tam in arquivos.items():
+        m = PADRAO_ANO.match(nome)
+        if not m or NOME_ANTIGO.match(nome):
             continue
         tabela, ano = m.group(1), int(m.group(2))
         por_tabela.setdefault(tabela, []).append(ano)
-        tamanho[tabela] = tamanho.get(tabela, 0) + a.stat().st_size
+        tamanho[tabela] = tamanho.get(tabela, 0) + tam
 
     linhas = ["| Tabela | Conteúdo | Anos | Arquivos | Tamanho |", "|---|---|---|---|---|"]
     for tabela, anos in sorted(por_tabela.items()):
@@ -293,10 +295,17 @@ def main() -> int:
     # O card vai junto: é ele que documenta o recorte metodológico para quem
     # baixar os dados sem ter lido o trabalho.
     cartao = DIR_DETALHADO / "README.md"
+    try:
+        publicados = {f.path.rsplit("/", 1)[-1]: f.size
+                      for f in api.list_repo_tree(args.repo, path_in_repo=PASTA, repo_type="dataset")
+                      if getattr(f, "size", None) is not None}
+    except Exception:
+        publicados = {}  # a pasta ainda não existe
+    no_repositorio = {**publicados, **{a.name: a.stat().st_size for a in arquivos}}
     cartao.write_text(
         _cartao_da_area(CARTAO).replace("{repo}/resolve/main", f"{args.repo}/resolve/main/{PASTA}")
               .replace("{repo}", args.repo)
-              .replace("{tabela_arquivos}", _tabela_de_arquivos(arquivos)),
+              .replace("{tabela_arquivos}", _tabela_de_arquivos(no_repositorio)),
         encoding="utf-8",
     )
 

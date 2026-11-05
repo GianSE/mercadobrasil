@@ -15,6 +15,19 @@ DIVERGEM: um estado com estoque pequeno e fluxo forte está crescendo rápido; u
 com estoque grande e fluxo negativo está encolhendo em silêncio. Nenhuma das
 duas bases sozinha mostra isso.
 
+UMA PARTE POR BASE
+------------------
+O CAGED sai todo mês e a RAIS uma vez por ano, e cada uma tem a sua fila (ver
+.github/workflows/pipeline-caged.yml e pipeline-rais.yml). Por isso o mapa é
+montado em duas partes, cada uma gravada na gold:
+
+    mapa_<nível>_fluxo    só do CAGED
+    mapa_<nível>_estoque  só da RAIS
+
+e `mapa_<nível>`, o que o site lê, é a junção das duas — segundos, sobre
+tabelas pequenas. A fila de uma base refaz só a parte dela e pega a outra já
+publicada: o mensal do CAGED nunca relê a RAIS, que é a base pesada.
+
 A CHAVE COMUM
 -------------
 A RAIS não tem coluna de UF e o CAGED tem — mas as duas gravam
@@ -24,9 +37,12 @@ falando da mesma coisa; usar `uf_descricao` num lado e o prefixo no outro
 abriria espaço para divergência silenciosa em município com nome ambíguo.
 
 Uso:
-    python -m gold_unificado.mapa
+    python -m gold_unificado.mapa --base caged   # refaz o fluxo, junta com o estoque publicado
+    python -m gold_unificado.mapa --base rais    # refaz o estoque, junta com o fluxo publicado
+    python -m gold_unificado.mapa                # refaz as duas
 """
 import argparse
+import shutil
 import sys
 import time
 
@@ -41,8 +57,12 @@ MUNICIPIO = "municipio_descricao"
 # "Bom Jesus" no Brasil, e a base do MTE grava sem acento.
 CODIGO = "municipio"
 
-# O CAGED de tecnologia, nas duas gerações, com o território normalizado.
-CAGED = f"""
+
+# Funções, e não constantes: a fonte de cada base só é listada (e, com a cópia
+# local ligada, baixada) se a parte dela for de fato recalculada.
+def _caged() -> str:
+    """O CAGED da área, nas duas gerações, com o território normalizado."""
+    return f"""
     SELECT year(competenciamov_data) AS ano,
            {UF} AS uf, {MUNICIPIO} AS municipio, {CODIGO} AS cod_municipio,
            saldomovimentacao AS saldo
@@ -56,7 +76,9 @@ CAGED = f"""
     WHERE competencia_declarada_data IS NOT NULL AND municipio_descricao IS NOT NULL
 """
 
-RAIS = f"""
+
+def _rais() -> str:
+    return f"""
     SELECT ano_particao AS ano, {UF} AS uf, {MUNICIPIO} AS municipio,
            {CODIGO} AS cod_municipio,
            vinculo_ativo_3112, vl_remun_media_sm,
@@ -69,65 +91,75 @@ RAIS = f"""
       AND {esc.sql_sem_artefato_rais(nuvem.fonte_silver_ti("rais_vinc"))}
 """
 
+
 # Teto de plausibilidade da remuneração — ver gold_rais.construir_gold: a fonte
 # inverte a conversão para salário mínimo em alguns registros a partir de 2023.
 REMUN = ("CASE WHEN vinculo_ativo_3112 = '1' AND vl_remun_media_sm > 0 "
          "AND vl_remun_media_sm <= 500 THEN vl_remun_media_sm END")
 
+NIVEIS = {"uf": "uf", "municipio": "uf, municipio, cod_municipio"}
+# Cada parte e a base que a calcula.
+PARTES = {"fluxo": "caged", "estoque": "rais"}
 
-def _sql(nivel: str) -> str:
-    """
-    O mesmo agregado em dois níveis territoriais.
 
-    FULL OUTER JOIN de propósito: um município pode ter movimentação no CAGED
-    sem estoque na RAIS naquele ano (empresa nova) ou o contrário (estoque
-    parado, sem contratação). INNER perderia justamente esses casos, que são
-    os mais informativos.
-    """
-    chave = "uf" if nivel == "uf" else "uf, municipio, cod_municipio"
-    return f"""
-        WITH fluxo AS (
+def _sql_parte(parte: str, nivel: str) -> str:
+    chave = NIVEIS[nivel]
+    if parte == "fluxo":
+        return f"""
             SELECT ano, {chave},
                    sum(saldo)                            AS saldo,
                    count(*) FILTER (WHERE saldo = 1)     AS admissoes,
                    count(*) FILTER (WHERE saldo = -1)    AS desligamentos
-            FROM ({CAGED}) GROUP BY ALL
-        ),
-        estoque AS (
-            SELECT ano, {chave},
-                   count(*) FILTER (WHERE vinculo_ativo_3112 = '1') AS estoque,
-                   round(avg({REMUN}), 2)                           AS remuneracao_sm,
-                   round(median({REMUN}), 2)                        AS remuneracao_sm_mediana
-            FROM ({RAIS}) WHERE setor_ti OR ocupacao_ti GROUP BY ALL
-        )
+            FROM ({_caged()}) GROUP BY ALL
+        """
+    return f"""
+        SELECT ano, {chave},
+               count(*) FILTER (WHERE vinculo_ativo_3112 = '1') AS estoque,
+               round(avg({REMUN}), 2)                           AS remuneracao_sm,
+               round(median({REMUN}), 2)                        AS remuneracao_sm_mediana
+        FROM ({_rais()}) WHERE setor_ti OR ocupacao_ti GROUP BY ALL
+    """
+
+
+def _sql_juntar(nivel: str) -> str:
+    """
+    A junção das duas partes, que é o que o site lê.
+
+    FULL OUTER JOIN de propósito: um município pode ter movimentação no CAGED
+    sem estoque na RAIS naquele ano (empresa nova) ou o contrário (estoque
+    parado, sem contratação). INNER perderia justamente esses casos, que são
+    os mais informativos. O ano do CAGED corre na frente do da RAIS: os anos
+    só com fluxo entram com estoque 0, como antes da separação.
+    """
+    fluxo = f"read_parquet('{nuvem.caminho_gold(f'mapa_{nivel}_fluxo')}')"
+    estoque = f"read_parquet('{nuvem.caminho_gold(f'mapa_{nivel}_estoque')}')"
+    municipal = nivel != "uf"
+    return f"""
         SELECT coalesce(f.ano, e.ano)                     AS ano,
                coalesce(f.uf, e.uf)                       AS uf,
-               {"coalesce(f.municipio, e.municipio) AS municipio, coalesce(f.cod_municipio, e.cod_municipio) AS cod_municipio," if nivel != "uf" else ""}
+               {"coalesce(f.municipio, e.municipio) AS municipio, coalesce(f.cod_municipio, e.cod_municipio) AS cod_municipio," if municipal else ""}
                coalesce(e.estoque, 0)                     AS estoque,
                e.remuneracao_sm,
                e.remuneracao_sm_mediana,
                coalesce(f.saldo, 0)                       AS saldo,
                coalesce(f.admissoes, 0)                   AS admissoes,
                coalesce(f.desligamentos, 0)               AS desligamentos
-        FROM fluxo f FULL OUTER JOIN estoque e
+        FROM {fluxo} f FULL OUTER JOIN {estoque} e
           ON f.ano = e.ano AND f.uf = e.uf
-         {"AND f.cod_municipio = e.cod_municipio" if nivel != "uf" else ""}
+         {"AND f.cod_municipio = e.cod_municipio" if municipal else ""}
         WHERE coalesce(f.uf, e.uf) IS NOT NULL
         ORDER BY 1, 2
     """
 
 
-TABELAS = {"mapa_uf": "uf", "mapa_municipio": "municipio"}
-
-
-def construir(con, nome: str) -> bool:
+def _gravar(con, nome: str, sql: str) -> bool:
     nuvem.DIR_GOLD_LOCAL.mkdir(parents=True, exist_ok=True)
     destino = nuvem.caminho_gold(nome)
     print(f"\n🔨 {nome}")
     inicio = time.time()
     try:
         con.execute(f"""
-            COPY ({_sql(TABELAS[nome])}) TO '{destino}' (
+            COPY ({sql}) TO '{destino}' (
                 FORMAT PARQUET,
                 COMPRESSION 'ZSTD',
                 COMPRESSION_LEVEL 3
@@ -141,22 +173,62 @@ def construir(con, nome: str) -> bool:
         return False
 
 
-def main() -> int:
-    p = argparse.ArgumentParser(description="Agregados territoriais das duas bases.")
-    p.add_argument("--tabela", nargs="+", choices=list(TABELAS), default=list(TABELAS))
-    p.add_argument("--threads", type=int, default=4)
-    args = p.parse_args()
+def _semear(nome: str) -> bool:
+    """A parte da outra base, como está publicada na gold da área."""
+    from huggingface_hub import hf_hub_download
 
+    try:
+        caminho = hf_hub_download(nuvem.REPO_GOLD, nuvem.caminho_na_gold(f"{nome}.parquet"), repo_type="dataset")
+    except Exception:
+        return False
+    nuvem.DIR_GOLD_LOCAL.mkdir(parents=True, exist_ok=True)
+    shutil.copy(caminho, nuvem.caminho_gold(nome))
+    print(f"\n⬇️  {nome}: da gold publicada (é da outra base)")
+    return True
+
+
+def construir(base: str = "ambas", threads: int = 4) -> int:
+    """
+    Refaz a parte de `base` ("caged", "rais" ou "ambas") nos dois níveis e
+    junta com a outra. A parte da outra base vem da gold publicada; se ainda
+    não existir (a primeira execução depois da separação), é calculada aqui.
+    Devolve 0 se tudo deu certo.
+    """
     con = nuvem.conectar_duckdb()
-    con.execute(f"SET threads={args.threads}")
+    con.execute(f"SET threads={threads}")
     con.execute("SET enable_progress_bar=false")
     print("=" * 70)
-    print("  GOLD — território: estoque (RAIS) e fluxo (CAGED) no mesmo lugar")
+    print(f"  GOLD — território: estoque (RAIS) e fluxo (CAGED) · refazendo: {base}")
     print("=" * 70)
 
-    ok = sum(construir(con, nome) for nome in args.tabela)
-    print(f"\n🏁 {ok}/{len(args.tabela)} tabela(s) construída(s).")
-    return 0 if ok == len(args.tabela) else 2
+    falhas = []
+    for nivel in NIVEIS:
+        for parte, dona in PARTES.items():
+            nome = f"mapa_{nivel}_{parte}"
+            if base in ("ambas", dona):
+                ok = _gravar(con, nome, _sql_parte(parte, nivel))
+            else:
+                ok = _semear(nome)
+                if not ok:
+                    print(f"\n↪️  {nome} ainda não está na gold: calculando agora (só na primeira vez)")
+                    ok = _gravar(con, nome, _sql_parte(parte, nivel))
+            if not ok:
+                falhas.append(nome)
+        if not any(f.startswith(f"mapa_{nivel}_") for f in falhas):
+            if not _gravar(con, f"mapa_{nivel}", _sql_juntar(nivel)):
+                falhas.append(f"mapa_{nivel}")
+
+    print(f"\n🏁 território: {'tudo construído' if not falhas else 'falhou: ' + ', '.join(falhas)}")
+    return 0 if not falhas else 2
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(description="Agregados territoriais das duas bases.")
+    p.add_argument("--base", choices=("caged", "rais", "ambas"), default="ambas",
+                   help="Qual parte refazer; a outra vem da gold publicada.")
+    p.add_argument("--threads", type=int, default=4)
+    args = p.parse_args()
+    return construir(args.base, args.threads)
 
 
 if __name__ == "__main__":

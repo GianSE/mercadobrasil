@@ -345,6 +345,28 @@ AGREGADOS = {
 }
 
 
+# Calculados um ano de cada vez. A mediana exata guarda todos os valores na
+# memória (não vai para o disco), e a rais_mediana pede seis recortes de uma
+# vez: com todos os anos juntos, no comércio (~12 milhões de vínculos por ano),
+# passou de 11 GB e derrubou o runner. Todo recorte dela já separa por ano (e o
+# artefato de Rondônia é por ano e código), então ano a ano o resultado é o
+# mesmo, com a memória de um ano só.
+POR_ANO = {"rais_mediana"}
+
+
+def _consulta_por_ano(con, nome: str) -> str:
+    """Monta a tabela ano a ano numa tabela temporária e devolve a consulta que a lê."""
+    anos = sorted(nuvem.anos_no_repo(nuvem.repo_silver_ti("rais_vinc"), nuvem.pasta_silver("rais_vinc"), "ano_particao"))
+    sql = AGREGADOS[nome]
+    assert FONTE_VINC in sql, f"{nome}: a consulta não lê FONTE_VINC, não dá para separar por ano"
+    con.execute("DROP TABLE IF EXISTS _por_ano")
+    for i, ano in enumerate(anos):
+        do_ano = sql.replace(FONTE_VINC, nuvem.fonte_silver_ti("rais_vinc", f"ano_particao={ano}/**/*.parquet"))
+        con.execute(("CREATE TEMP TABLE _por_ano AS " if i == 0 else "INSERT INTO _por_ano ") + do_ano)
+    print(f"   … {len(anos)} ano(s), um de cada vez", flush=True)
+    return "SELECT * FROM _por_ano ORDER BY 1, 2, 3"
+
+
 def construir(con, nome: str) -> bool:
     # Grava direto na pasta local que gold_unificado/publicar_gold.py lê
     # para publicar.
@@ -353,8 +375,9 @@ def construir(con, nome: str) -> bool:
     print(f"\n🔨 {nome}")
     inicio = time.time()
     try:
+        consulta = _consulta_por_ano(con, nome) if nome in POR_ANO else AGREGADOS[nome]
         con.execute(f"""
-            COPY ({AGREGADOS[nome]}) TO '{destino}' (
+            COPY ({consulta}) TO '{destino}' (
                 FORMAT PARQUET,
                 COMPRESSION 'ZSTD',
                 COMPRESSION_LEVEL 3

@@ -225,7 +225,8 @@ def rotular(perfil: pd.DataFrame) -> dict:
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Agrupa municípios por trajetória de TI.")
-    p.add_argument("--ano", type=int, default=2025)
+    p.add_argument("--ano", type=int, default=None,
+                   help="Vazio = o ano mais recente com estoque (o último da RAIS) no mapa.")
     p.add_argument("--janela", type=int, default=5, help="Anos para medir crescimento.")
     p.add_argument("--minimo", type=int, default=30,
                    # O %% é escape do argparse, que interpola o texto de ajuda.
@@ -235,6 +236,12 @@ def main() -> int:
                    help="Estoque mínimo no ano-base, para o crescimento "
                         "significar alguma coisa.")
     args = p.parse_args()
+    if args.ano is None:
+        # A fila roda sozinha: o ano acompanha a RAIS em vez de ficar fixo.
+        from _utils import nuvem
+        args.ano = int(conectar_duckdb().execute(
+            f"SELECT max(ano) FROM read_parquet('{nuvem.caminho_gold('mapa_municipio')}') WHERE estoque > 0"
+        ).fetchone()[0])
 
     print("=" * 78)
     print(f"  MUNICÍPIOS POR TRAJETÓRIA DO MERCADO DE TI — {args.ano}")

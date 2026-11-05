@@ -53,8 +53,19 @@ inputs `area` dos workflows.
 
 ## Como rodar
 
-No GitHub Actions, **Pipeline por área (orquestrador)** com a área e a camada
-de onde começar. Cada etapa também roda sozinha, com o mesmo input de área.
+CAGED e RAIS têm filas separadas, no ritmo de cada fonte, e rodam sozinhas no
+GitHub Actions:
+
+| Fila | Quando | O que refaz |
+|---|---|---|
+| **Pipeline CAGED** (`pipeline-caged.yml`) | toda terça | o mês novo: silver da área, gold do CAGED (ano corrente e anterior), o fluxo do mapa, previsão e nowcast |
+| **Pipeline RAIS** (`pipeline-rais.yml`) | todo dia 15 | o ano novo: silver da área, gold da RAIS, o estoque do mapa, hiato e sobrevivência |
+
+Sem dado novo, cada etapa verifica e para, sem rodar a gold. O mapa é a
+junção de uma parte de cada base: cada fila refaz a sua e reaproveita a outra
+publicada. Para montar uma área nova ou refazer tudo, **Pipeline por área
+(orquestrador)**, à mão, com a área e a camada de onde começar. Cada etapa
+também roda sozinha, com o mesmo input de área.
 Segredos usados: `HF_TOKEN` (escrita nos datasets) e, opcionais,
 `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` para avisos.
 

@@ -52,6 +52,11 @@ REPO_DICIONARIOS = os.getenv("REPO_DICIONARIOS", "Gianpedro/mte-dicionarios")
 # Staging do job — some ao final, não precisa sobreviver entre execuções.
 DIR_TEMP = Path(os.getenv("STAGING_DIR") or ".") / "_staging"
 
+# Cópia local da silver da área (ver _no_espelho), ligada pelo workflow das
+# golds que releem a silver várias vezes. Fora do _staging de propósito.
+ESPELHO_LOCAL = os.getenv("ESPELHO_SILVER_LOCAL") == "1"
+DIR_ESPELHO = Path(os.getenv("STAGING_DIR") or ".") / "_espelho_silver"
+
 # Mesma pasta que o publicador da gold lê pra subir ao Hub.
 DIR_GOLD_LOCAL = Path(__file__).resolve().parents[2] / "publicacao" / "gold"
 
@@ -150,7 +155,33 @@ def fonte_parquet(repo: str, padrao: str) -> str:
     arquivos = sorted(a for a in arquivos_remotos(repo) if regex.fullmatch(a))
     if not arquivos:
         return f"'{DIR_TEMP.as_posix()}/_nada_no_hub/{repo.replace('/', '__')}/{padrao}'"
+    if ESPELHO_LOCAL and repo in (REPO_SILVER_TI_CAGED, REPO_SILVER_TI_RAIS):
+        return "[" + ", ".join(f"'{p}'" for p in _no_espelho(repo, arquivos)) + "]"
     return "[" + ", ".join(f"'{fonte_leitura(repo, a)}'" for a in arquivos) + "]"
+
+
+def _no_espelho(repo: str, arquivos: list[str]) -> list[str]:
+    """
+    Os arquivos da silver da área numa cópia no disco do runner, baixando só os
+    que ainda não estão lá. A gold da RAIS relê a silver inteira uma vez por
+    tabela (~10 vezes): pelo Hub, numa área grande (comércio, ~12 GB), cada
+    releitura levava 10 min ou mais, e a primeira, 36. Baixada uma vez (uma
+    chamada, em paralelo), as releituras são do disco. As colunas de partição
+    continuam no caminho (`.../ano_particao=2024/...`), então nada muda para
+    quem consulta.
+    """
+    destino = DIR_ESPELHO / repo.replace("/", "__")
+    faltando = [a for a in arquivos if not (destino / a).exists()]
+    if faltando:
+        from huggingface_hub import snapshot_download
+
+        inicio = time.time()
+        com_espera_no_limite(lambda: snapshot_download(repo, repo_type="dataset", allow_patterns=faltando,
+                                                       local_dir=destino), f"cópia local de {repo}")
+        tamanho = sum((destino / a).stat().st_size for a in faltando)
+        print(f"   ⬇️  cópia local de {repo}: {len(faltando)} arquivo(s), {tamanho / 1e9:.1f} GB "
+              f"em {time.time() - inicio:.0f}s", flush=True)
+    return [(destino / a).as_posix() for a in arquivos]
 
 
 def fonte_bronze(tabela: str, resto: str = "**/*.parquet") -> str:

@@ -24,8 +24,12 @@ dashboard precisa é a previsão com intervalo, a tábua, os grupos. Guardar
 objeto serializado amarraria o dashboard à versão da biblioteca e quebraria em
 silêncio numa atualização.
 
+Cada modelo é de uma base: previsão e nowcast do CAGED (fila mensal),
+sobrevivência e hiato da RAIS (fila anual). `--base` escolhe quais rodam.
+
 Uso:
     python -m ciencia_dados.materializar
+    python -m ciencia_dados.materializar --base caged
     python -m ciencia_dados.materializar --pular hiato
 """
 import argparse
@@ -130,13 +134,32 @@ ETAPAS = {
     "sobrevivencia": sobrevivencia,
     "nowcast": nowcast,
 }
+# A base que cada modelo lê. O nowcast é do CAGED: projeta o ano com os meses
+# do CAGED sobre o estoque da RAIS já publicado (rais_estoque_anual).
+BASE_DA_ETAPA = {"previsao": "caged", "nowcast": "caged", "sobrevivencia": "rais", "hiato": "rais"}
 
 
-def main() -> int:
+def _ultimo_ano_rais() -> int:
+    """O ano mais recente da RAIS na silver da área: a fila anual não fixa ano."""
+    from _utils import nuvem
+
+    return max(nuvem.anos_no_repo(nuvem.repo_silver_ti("rais_vinc"), nuvem.pasta_silver("rais_vinc"), "ano_particao"))
+
+
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Materializa os modelos na gold.")
+    p.add_argument("--base", choices=("caged", "rais", "ambas"), default="ambas")
     p.add_argument("--pular", nargs="*", default=[], choices=list(ETAPAS) + ["hiato"])
-    p.add_argument("--ano-sobrevivencia", type=int, default=2024)
-    args = p.parse_args()
+    p.add_argument("--ano-sobrevivencia", type=int, default=None,
+                   help="Vazio = o ano mais recente da RAIS.")
+    args = p.parse_args(argv)
+    # Os modelos da outra base ficam como estão na gold publicada.
+    args.pular += [e for e, b in BASE_DA_ETAPA.items() if args.base not in ("ambas", b)]
+    ultimo_rais = None
+    if args.base != "caged":
+        ultimo_rais = _ultimo_ano_rais()
+        if args.ano_sobrevivencia is None:
+            args.ano_sobrevivencia = ultimo_rais
 
     con = conectar_duckdb()
     con.execute("SET enable_progress_bar=false")
@@ -175,7 +198,7 @@ def main() -> int:
         try:
             from ciencia_dados import hiato_salarial as hs
 
-            tabela = hs.serie(range(2007, 2026), con)
+            tabela = hs.serie(range(2007, ultimo_rais + 1), con)
             if not tabela.empty:
                 total += 1
                 print(f"   ✅ hiato_serie: {_gravar(con, tabela, 'hiato_serie'):,} linha(s)")

@@ -1,8 +1,10 @@
 name: Pipeline por área (orquestrador)
 run-name: "Pipeline · ${{ inputs.area }} · desde ${{ inputs.comecar_em }}"
 
-# A fila inteira para a área escolhida (tec, saúde, educação). Só manual:
-# a área é escolhida ao iniciar.
+# A fila COMPLETA de uma área, CAGED e RAIS juntos, só manual: para montar
+# uma área nova ou refazer tudo. A atualização do dia a dia é das filas
+# separadas, que rodam sozinhas: pipeline-caged.yml (semanal, pega o mês novo
+# do CAGED) e pipeline-rais.yml (mensal, pega o ano novo da RAIS).
 #
 #   bronze-caged ┐
 #   bronze-rais  ┼─ paralelo, comum a todas as áreas

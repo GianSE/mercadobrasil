@@ -1,0 +1,95 @@
+name: Pipeline CAGED (semanal)
+run-name: "Pipeline CAGED · ${{ inputs.area || 'todas' }} · desde ${{ inputs.comecar_em || 'bronze' }}"
+
+# A fila do CAGED, que sai todo mês, para todas as áreas. Roda sozinha toda
+# semana: o MTE não publica em dia fixo, e uma semana sem mês novo custa só as
+# verificações — cada etapa verifica antes e para quando não há nada.
+#
+#   bronze-caged ┐
+#   dicionario   ┴─ silver-caged-completa ── uma área por vez (area-caged.yml):
+#                                             silver da área -> gold do CAGED
+#
+# A RAIS tem a fila dela (pipeline-rais.yml): nada aqui recalcula a RAIS.
+# O mercadotech (o TCC) atualiza a mesma bronze na segunda; esta fila roda na
+# terça para as duas nunca escreverem ao mesmo tempo.
+
+on:
+  schedule:
+    - cron: "0 9 * * 2" # toda terça, 09:00 UTC (06:00 em Brasília)
+  workflow_dispatch:
+    inputs:
+      area:
+        description: "Área (todas = uma de cada vez)"
+        type: choice
+        options: [todas, tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
+        default: todas
+      comecar_em:
+        description: "bronze = tudo; silver = só as áreas; gold = refaz a gold sem verificar a silver"
+        type: choice
+        options: [bronze, silver, gold]
+        default: bronze
+      anos_gold:
+        description: "Anos da gold do CAGED: recentes (corrente e anterior) ou todos"
+        type: choice
+        options: [recentes, todos]
+        default: recentes
+
+# Uma fila do CAGED por vez: uma semana atrasada espera a anterior terminar.
+concurrency:
+  group: pipeline-caged
+  cancel-in-progress: false
+
+jobs:
+  decidir:
+    name: Decidir áreas e camadas
+    runs-on: ubuntu-latest
+    outputs:
+      areas: ${{ steps.calc.outputs.areas }}
+      comuns: ${{ steps.calc.outputs.comuns }}
+    steps:
+      - id: calc
+        run: |
+          AREA="${{ inputs.area || 'todas' }}"
+          if [ "$AREA" = todas ]; then
+            echo 'areas=["tec","saude","educacao","agronegocio","financas","industria","construcao","logistica","comercio","engenharia"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "areas=[\"$AREA\"]" >> "$GITHUB_OUTPUT"
+          fi
+          COMECAR="${{ inputs.comecar_em || 'bronze' }}"
+          echo "comuns=$([ "$COMECAR" = bronze ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "Áreas: $AREA | começando em: $COMECAR | anos da gold: ${{ inputs.anos_gold || 'recentes' }}"
+
+  bronze-caged:
+    needs: decidir
+    if: needs.decidir.outputs.comuns == 'true'
+    uses: ./.github/workflows/bronze-caged.yml
+    secrets: inherit
+
+  dicionario:
+    needs: decidir
+    if: needs.decidir.outputs.comuns == 'true'
+    uses: ./.github/workflows/dicionario.yml
+    secrets: inherit
+
+  silver-caged-completa:
+    needs: [decidir, bronze-caged, dicionario]
+    if: needs.decidir.outputs.comuns == 'true' && !failure() && !cancelled()
+    uses: ./.github/workflows/silver-caged-completa.yml
+    secrets: inherit
+
+  area:
+    needs: [decidir, silver-caged-completa]
+    if: ${{ !failure() && !cancelled() }}
+    name: "${{ matrix.area }}"
+    strategy:
+      fail-fast: false
+      # Uma área por vez: todas leem a mesma silver completa no Hub.
+      max-parallel: 1
+      matrix:
+        area: ${{ fromJson(needs.decidir.outputs.areas) }}
+    uses: ./.github/workflows/area-caged.yml
+    with:
+      area: ${{ matrix.area }}
+      comecar_em: ${{ inputs.comecar_em == 'gold' && 'gold' || 'silver' }}
+      anos_gold: ${{ inputs.anos_gold || 'recentes' }}
+    secrets: inherit

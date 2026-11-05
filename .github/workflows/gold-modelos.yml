@@ -1,5 +1,5 @@
 name: Gold modelos por área
-run-name: "Gold modelos · ${{ inputs.area }}"
+run-name: "Gold modelos · ${{ inputs.area }} · ${{ inputs.base || 'ambas' }}"
 
 # Previsão, nowcast, hiato salarial e sobrevivência de vínculo da área
 # escolhida. Depende de gold-rais.yml da mesma área: o nowcast lê
@@ -13,16 +13,27 @@ on:
         type: choice
         options: [tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
         required: true
+      base:
+        description: "Qual base refazer (a outra vem da gold publicada)"
+        type: choice
+        options: [ambas, caged, rais]
+        default: ambas
   workflow_call:
     inputs:
       area:
         type: string
         required: true
+      base:
+        type: string
+        default: ambas
 
 env:
   AREA: ${{ inputs.area }}
   # O spill do DuckDB vai junto: a silver de uma área grande é ~10x a de TI.
   STAGING_DIR: /mnt/staging
+  # Baixa a silver da área uma vez para o disco do runner, em vez de reler do
+  # Hub a cada tabela (ver nuvem._no_espelho).
+  ESPELHO_SILVER_LOCAL: "1"
   HF_TOKEN: ${{ secrets.HF_TOKEN }}
   TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
   TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -44,4 +55,4 @@ jobs:
 
       - name: Materializa os modelos (previsão, nowcast, hiato, sobrevivência)
         working-directory: tasks-python/3-gold
-        run: python gold-modelos.py
+        run: python gold-modelos.py --base ${{ inputs.base || 'ambas' }}
