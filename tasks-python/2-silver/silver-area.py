@@ -1,7 +1,7 @@
 """
 Silver de área — recorta da silver completa (a base inteira já traduzida) o
-que é da área pedida em AREA e publica na pasta da área do repositório de
-área (Gianpedro/silver-caged-area/saude/..., Gianpedro/silver-rais-area/tec/...).
+que é da área pedida em AREA e publica na pasta da base no repositório da
+área (Gianpedro/mercadobrasil-tec/silver-caged/..., Gianpedro/mercadobrasil-saude/silver-rais/...).
 
 Não traduz nada: a tradução é a da silver completa, a mesma da silver de TI
 (silver-caged-ti.py com --completa). Recortar TI da completa dá, linha a
@@ -35,7 +35,7 @@ sys.path.insert(0, str(_AQUI.parent))
 from silver_caged import mapeamento as mp_caged  # noqa: E402
 from silver_rais import mapeamento as mp_rais  # noqa: E402
 from _utils import areas, escopo_tecnologia as esc, log, nuvem, telegram  # noqa: E402
-from _utils.cartoes_raiz import cartao_raiz  # noqa: E402
+from _utils.cartoes_raiz import publicar_raiz  # noqa: E402
 
 log.ativar_horario()
 
@@ -249,19 +249,15 @@ def modo_processar(args) -> int:
 def main() -> int:
     args = _argumentos()
     repo = nuvem.repo_silver(args.tabela[0])
-    # O cartão da raiz é o índice das áreas, o mesmo para todas: só sobe se mudou.
-    nuvem.preparar_staging()
-    raiz = nuvem.DIR_TEMP / f"cartao_raiz_{args.base}.md"
-    raiz.write_text(cartao_raiz(repo), encoding="utf-8")
-    if nuvem.publicar_cartao(repo, raiz):
-        print(f"   📝 cartão da raiz de {repo} atualizado")
-    # O cartão da área fica na pasta dela. No CAGED ele é do
+    publicar_raiz(repo, esc.AREA)
+    # O cartão da base fica na pasta dela. No CAGED ele é do
     # gold-caged-consolidado (gold_caged/publicar_hf.py), que publica na mesma
     # pasta: aqui só nasce, para os dois não se sobrescreverem a cada execução.
-    cartao_area = f"{esc.AREA}/README.md"
-    if args.base == "rais" or not nuvem.existe_remoto(repo, cartao_area):
-        if nuvem.publicar_cartao(repo, _cartao(args.base, repo), cartao_area):
-            print(f"   📝 cartão de {repo}/{cartao_area} atualizado")
+    # Na RAIS o cartão é só deste script.
+    cartao = f"{nuvem.pasta_base(args.base)}/README.md"
+    if args.base == "rais" or not nuvem.existe_remoto(repo, cartao):
+        if nuvem.publicar_cartao(repo, _cartao(args.base, repo), cartao):
+            print(f"   📝 cartão de {repo}/{cartao} atualizado")
     if args.modo == "verificar":
         return modo_verificar(args)
     return modo_processar(args)

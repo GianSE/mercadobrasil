@@ -19,8 +19,8 @@ run-name: "Pipeline · ${{ inputs.area }} · desde ${{ inputs.comecar_em }}"
 #                ├─ gold-caged-consolidado
 #                └─ gold-modelos  (espera gold-rais: o nowcast lê o estoque)
 #
-# Tudo publica na pasta da área dos repositórios de área (silver-caged-area/<área>,
-# silver-rais-area/<área>, gold-mercado-brasil/<área>).
+# Tudo publica no repositório da área, Gianpedro/mercadobrasil-<área>, cada camada
+# na sua pasta (silver-caged/, silver-rais/, gold/).
 # A bronze e a silver completa são as mesmas do repositório mercadotech, que
 # as atualiza toda segunda: não rode as duas filas a partir da bronze ao
 # mesmo tempo. "comecar_em" pula camadas que já estão em dia; cada workflow

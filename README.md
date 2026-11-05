@@ -25,8 +25,8 @@ flowchart LR
 |---|---|---|
 | Bronze | O arquivo do FTP em Parquet, sem tratamento | `Gianpedro/bronze-caged`, `Gianpedro/bronze-rais` |
 | Silver completa | A base inteira traduzida pelos dicionários oficiais do MTE | `Gianpedro/silver-caged`, `Gianpedro/silver-rais` |
-| Silver da área | O recorte da área, sem nova tradução | `Gianpedro/silver-caged-area`, `Gianpedro/silver-rais-area`, uma pasta por área |
-| Gold da área | Agregados, cubos do CAGED e resultados dos modelos | `Gianpedro/gold-mercado-brasil`, uma pasta por área |
+| Silver da área | O recorte da área, sem nova tradução | `Gianpedro/mercadobrasil-<área>`, pastas `silver-caged/` e `silver-rais/` |
+| Gold da área | Agregados, cubos do CAGED e resultados dos modelos | `Gianpedro/mercadobrasil-<área>`, pasta `gold/` |
 
 A bronze e a silver completa não dependem de área e são as mesmas do
 mercadotech. A silver e a gold são recalculadas por área. TI se chama `tec`

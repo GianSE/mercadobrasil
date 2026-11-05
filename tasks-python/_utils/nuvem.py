@@ -15,9 +15,12 @@ from pathlib import Path
 
 from _utils.areas import area_selecionada
 
-# Sete repositórios: bronze-caged e bronze-rais, as duas silvers completas, as
-# duas silvers de área e a gold. Nos três de área, cada área é uma PASTA com o
-# slug dela: silver-caged-area/saude/caged_mov/..., gold-mercado-brasil/saude/...
+# Cada área é UM repositório, Gianpedro/mercadobrasil-<área>, com uma pasta por
+# camada: silver-caged/, silver-rais/ e gold/. Explorar uma área nova cria um
+# repositório só, apagar uma área apaga um só, e cada área tem a própria cota
+# de commits do Hub. As tabelas ficam dentro da pasta da camada
+# (silver-caged/caged_mov/ano_particao=.../...), e nada publica fora da sua
+# pasta: a silver nunca apaga a gold, e o CAGED nunca apaga a RAIS.
 # TI aqui se chama "tec": os conjuntos do TCC (silver-caged-ti,
 # gold-analise-mercado-ti) são do repositório mercadotech e ficam à parte. Os
 # nomes das constantes continuam "_TI" porque o código inteiro os importa assim.
@@ -25,15 +28,18 @@ AREA = area_selecionada()
 
 REPO_BRONZE_CAGED = os.getenv("REPO_BRONZE_CAGED", "Gianpedro/bronze-caged")
 REPO_BRONZE_RAIS = os.getenv("REPO_BRONZE_RAIS", "Gianpedro/bronze-rais")
-REPO_SILVER_TI_CAGED = os.getenv("REPO_SILVER_TI_CAGED", "Gianpedro/silver-caged-area")
-REPO_SILVER_TI_RAIS = os.getenv("REPO_SILVER_TI_RAIS", "Gianpedro/silver-rais-area")
+REPO_AREA = os.getenv("REPO_AREA", f"Gianpedro/mercadobrasil-{AREA}")
+REPO_SILVER_TI_CAGED = os.getenv("REPO_SILVER_TI_CAGED", REPO_AREA)
+REPO_SILVER_TI_RAIS = os.getenv("REPO_SILVER_TI_RAIS", REPO_AREA)
 # A silver completa: a mesma tradução, sem recorte (todas as ocupações e
 # setores). É a base inteira para quem quiser consumir, e a origem da silver
 # de toda área (ver 2-silver/silver-area.py). Ela e a bronze são as mesmas do
 # repositório mercadotech: as duas camadas não dependem de área.
 REPO_SILVER_CAGED = os.getenv("REPO_SILVER_CAGED", "Gianpedro/silver-caged")
 REPO_SILVER_RAIS = os.getenv("REPO_SILVER_RAIS", "Gianpedro/silver-rais")
-REPO_GOLD = os.getenv("REPO_GOLD", "Gianpedro/gold-mercado-brasil")
+REPO_GOLD = os.getenv("REPO_GOLD", REPO_AREA)
+# As pastas das camadas dentro do repositório da área.
+PASTA_GOLD = "gold"
 # A gold do TCC, de onde uma área nova tira as referências que não dependem do
 # recorte (as coordenadas dos municípios), até ter as suas.
 REPO_GOLD_REFERENCIA = os.getenv("REPO_GOLD_REFERENCIA", "Gianpedro/gold-analise-mercado-ti")
@@ -61,17 +67,24 @@ def repo_silver(tabela: str, completa: bool = False) -> str:
     return REPO_SILVER_RAIS if tabela.startswith("rais") else REPO_SILVER_CAGED
 
 
+def pasta_base(base: str) -> str:
+    """A pasta da silver de uma base no repositório da área: `silver-caged`, `silver-rais`."""
+    return f"silver-{base}"
+
+
 def pasta_silver(tabela: str, completa: bool = False) -> str:
     """
-    Onde a tabela mora dentro do repositório: `caged_mov` na silver completa,
-    `saude/caged_mov` na silver de área (uma pasta por área no mesmo repo).
+    Onde a tabela mora dentro do repositório: `caged_mov` na silver completa
+    (repositório só dela), `silver-caged/caged_mov` no repositório da área.
     """
-    return tabela if completa else f"{AREA}/{tabela}"
+    if completa:
+        return tabela
+    return f"{pasta_base('rais' if tabela.startswith('rais') else 'caged')}/{tabela}"
 
 
 def caminho_na_gold(nome: str) -> str:
-    """Caminho de um arquivo da gold da área no repositório: `saude/rais_estoque_anual.parquet`."""
-    return f"{AREA}/{nome}"
+    """Caminho de um arquivo da gold no repositório da área: `gold/rais_estoque_anual.parquet`."""
+    return f"{PASTA_GOLD}/{nome}"
 
 
 def fonte_leitura(repo: str, prefixo: str = "") -> str:
@@ -457,9 +470,9 @@ def publicar_particoes(con, local_dir: Path, repo: str, tabela: str, consolidar:
     origem): na RAIS completa, um ano inteiro num arquivo só passaria de
     alguns GB, e consolidar copiaria o ano de novo no disco do runner.
 
-    `pasta` é onde a tabela mora no repositório (padrão: o nome dela). Nos
-    repositórios de área é `<área>/<tabela>`, e a substituição do ano olha só
-    essa pasta: publicar saúde nunca apaga o 2025 de educação.
+    `pasta` é onde a tabela mora no repositório (padrão: o nome dela). No
+    repositório da área é `silver-caged/<tabela>`, e a substituição do ano olha
+    só essa pasta: publicar a silver nunca apaga nada da gold nem da outra base.
     """
     import re
 
@@ -502,7 +515,7 @@ def publicar_particoes(con, local_dir: Path, repo: str, tabela: str, consolidar:
         if caminho not in novos and caminho.endswith(".parquet") and any(
             caminho.startswith(f"{pasta}/ano_particao={a}/")
             # Os arquivos antigos na raiz (ver acima) só existem nos
-            # repositórios sem pasta de área.
+            # repositórios em que a tabela fica na raiz.
             or (pasta == tabela and caminho.startswith(f"ano_particao={a}/")
                 and caminho.rsplit("/", 1)[-1].startswith(f"{tabela}_"))
             for a in anos)

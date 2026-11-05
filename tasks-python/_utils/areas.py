@@ -28,8 +28,8 @@ números de uma área.
 """
 import os
 
-# Slug da área: é o nome da pasta dela nos repositórios de área
-# (silver-caged-area/<slug>, gold-mercado-brasil/<slug>), por isso sem acento.
+# Slug da área: vai no nome do repositório dela no Hub (Gianpedro/mercadobrasil-<slug>),
+# por isso sem acento.
 # TI é "tec" e não "ti": silver-caged-ti e gold-analise-mercado-ti são os
 # conjuntos do TCC, que o repositório mercadotech mantém.
 AREA_PADRAO = "tec"

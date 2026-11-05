@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 
 from _utils import escopo_tecnologia as esc, nuvem
-from _utils.cartoes_raiz import cartao_raiz
+from _utils.cartoes_raiz import publicar_raiz
 
 # A gold da área do recorte (ver _utils/nuvem.py): em TI, a de sempre.
 REPO = nuvem.REPO_GOLD
@@ -152,7 +152,8 @@ def main() -> int:
     # pasta, só garante que existe e soma o README por cima.
     DIR_LOCAL.mkdir(parents=True, exist_ok=True)
     (DIR_LOCAL / "README.md").write_text(
-        _cartao_da_area(CARTAO).replace("{repo}", args.repo), encoding="utf-8")
+        _cartao_da_area(CARTAO).replace("{repo}/resolve/main", f"{args.repo}/resolve/main/{nuvem.PASTA_GOLD}")
+                               .replace("{repo}", args.repo), encoding="utf-8")
 
     if not args.so_card:
         arquivos = sorted(DIR_LOCAL.glob("*.parquet"))
@@ -162,14 +163,11 @@ def main() -> int:
         total = sum(a.stat().st_size for a in arquivos)
         print(f"   {len(arquivos)} tabela(s), {total / 1e6:.1f} MB")
 
-    # A pasta inteira (tabelas e o cartão da área) vai para a pasta da área;
-    # a raiz do repositório tem o índice das áreas.
-    api.upload_folder(folder_path=str(DIR_LOCAL), repo_id=args.repo, path_in_repo=esc.AREA,
+    # A pasta inteira (tabelas e o cartão da gold) vai para gold/ no
+    # repositório da área; a raiz dele tem o índice das pastas.
+    api.upload_folder(folder_path=str(DIR_LOCAL), repo_id=args.repo, path_in_repo=nuvem.PASTA_GOLD,
                       repo_type="dataset")
-    raiz = DIR_LOCAL.parent / "_cartao_raiz_gold.md"
-    raiz.write_text(cartao_raiz(args.repo), encoding="utf-8")
-    if nuvem.publicar_cartao(args.repo, raiz):
-        print("   📝 cartão da raiz atualizado")
+    publicar_raiz(args.repo, esc.AREA)
     print(f"\n🏁 https://huggingface.co/datasets/{args.repo}")
     return 0
 

@@ -21,16 +21,17 @@ from huggingface_hub import HfApi
 from _utils import escopo_tecnologia as esc, nuvem
 
 ANO_INICIAL = 2007
-# Na Silver do CAGED o repositório guarda também o espelho consolidado da
-# Gold (caged_unificado_<ano> na raiz): só as pastas das tabelas tratadas contam.
-TABELAS_SILVER = ("caged_mov/", "caged_old/", "caged_for/", "caged_exc/", "caged_ajustes/", "rais_vinc/", "rais_estab/")
+# O repositório da área guarda as duas silvers, a gold e o espelho consolidado
+# do CAGED (silver-caged/caged_unificado_<ano>): cada linha conta só as pastas
+# das tabelas tratadas da sua base.
+TABELAS_CAGED = ("caged_mov", "caged_old", "caged_for", "caged_exc", "caged_ajustes")
+TABELAS_RAIS = ("rais_vinc", "rais_estab")
 
 CAMADAS = [
     ("Bronze", "RAIS", nuvem.REPO_BRONZE_RAIS, None),
     ("Bronze", "CAGED", nuvem.REPO_BRONZE_CAGED, None),
-    # Nos repositórios de área, só a pasta desta área.
-    (f"Silver de {esc.SIGLA}", "RAIS", nuvem.REPO_SILVER_TI_RAIS, tuple(f"{esc.AREA}/{t}" for t in TABELAS_SILVER)),
-    (f"Silver de {esc.SIGLA}", "CAGED", nuvem.REPO_SILVER_TI_CAGED, tuple(f"{esc.AREA}/{t}" for t in TABELAS_SILVER)),
+    (f"Silver de {esc.SIGLA}", "RAIS", nuvem.REPO_SILVER_TI_RAIS, tuple(f"{nuvem.pasta_silver(t)}/" for t in TABELAS_RAIS)),
+    (f"Silver de {esc.SIGLA}", "CAGED", nuvem.REPO_SILVER_TI_CAGED, tuple(f"{nuvem.pasta_silver(t)}/" for t in TABELAS_CAGED)),
 ]
 
 
@@ -51,9 +52,9 @@ def medir(con) -> list[tuple]:
         # da RAIS junta vínculos e estabelecimentos, que não se somam.
         por_tabela: dict[str, list] = {}
         for f in arquivos:
-            # A tabela é a primeira pasta depois da área, quando há área.
+            # A tabela é a primeira pasta, ou a segunda dentro de silver-<base>/.
             partes = f.path.split("/")
-            por_tabela.setdefault(partes[1] if partes[0] == esc.AREA else partes[0], []).append(f)
+            por_tabela.setdefault(partes[1] if partes[0].startswith("silver-") else partes[0], []).append(f)
         for tabela, grupo in sorted(por_tabela.items()):
             lista = "[" + ", ".join(f"'{nuvem.fonte_leitura(repo, f.path)}'" for f in grupo) + "]"
             registros = con.execute(f"SELECT sum(num_rows) FROM parquet_file_metadata({lista})").fetchone()[0]

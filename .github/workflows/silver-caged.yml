@@ -1,7 +1,7 @@
 name: Silver CAGED por área
 run-name: "Silver CAGED · ${{ inputs.area }}"
 
-# A silver da área escolhida, em Gianpedro/silver-caged-area/<área>: recorte da
+# A silver da área escolhida, em Gianpedro/mercadobrasil-<área>/silver-caged: recorte da
 # silver completa (Gianpedro/silver-caged, já traduzida), sem ler a bronze
 # (silver-area.py). Depende da silver-caged-completa.yml estar em dia.
 

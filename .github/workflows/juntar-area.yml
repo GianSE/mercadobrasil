@@ -1,0 +1,59 @@
+name: Juntar área num repositório (uso único)
+run-name: "Juntar área · ${{ inputs.areas || 'todas' }}"
+
+# Junta silver-caged-<área>, silver-rais-<área> e gold-mercado-brasil/<área>
+# em Gianpedro/mercadobrasil-<área>, uma pasta por camada. O CAGED é renomeado e
+# muda de pasta dentro do próprio repositório, sem baixar nada; só a RAIS e a
+# gold passam pelo runner. Pode rodar de novo depois de uma falha: o que já
+# foi copiado é pulado. Não apaga os repositórios antigos.
+# Não rode a silver nem a gold da área enquanto ela estiver sendo juntada.
+
+on:
+  workflow_dispatch:
+    inputs:
+      areas:
+        description: "Áreas separadas por espaço (vazio = todas)"
+        default: ""
+
+env:
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  PYTHONUNBUFFERED: "1"
+  HF_HUB_DISABLE_PROGRESS_BARS: "1"
+
+jobs:
+  listar:
+    runs-on: ubuntu-latest
+    outputs:
+      areas: ${{ steps.lista.outputs.areas }}
+    steps:
+      - id: lista
+        run: |
+          LISTA="${{ inputs.areas }}"
+          [ -n "$LISTA" ] || LISTA="tec saude educacao agronegocio financas industria construcao logistica comercio engenharia"
+          echo "areas=$(python3 -c "import json,sys; print(json.dumps(sys.argv[1].split()))" "$LISTA")" >> "$GITHUB_OUTPUT"
+
+  juntar:
+    needs: listar
+    name: "Juntar ${{ matrix.area }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      STAGING_DIR: /mnt/staging
+      AREA: ${{ matrix.area }}
+    strategy:
+      fail-fast: false
+      # Cada área escreve no próprio repositório; o limite é o de downloads,
+      # que é da conta inteira.
+      max-parallel: 4
+      matrix:
+        area: ${{ fromJson(needs.listar.outputs.areas) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/python
+
+      - name: Staging no disco grande do runner
+        run: sudo mkdir -p /mnt/staging && sudo chown -R "$USER" /mnt/staging
+
+      - name: Junta ${{ matrix.area }}
+        working-directory: tasks-python
+        run: python _utils/juntar_area.py --area ${{ matrix.area }}
