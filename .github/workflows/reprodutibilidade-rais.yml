@@ -2,7 +2,7 @@ name: Reprodutibilidade RAIS por área
 run-name: "Reprodutibilidade RAIS · ${{ inputs.area }}"
 
 # Conta o recorte da área no microdado bruto (bronze-rais), ano a ano, e
-# compara com mercadobrasil-<área>/silver-rais. Como a silver da área sai da silver
+# compara com mercadobrasil-<área>/silver-rais-<área>. Como a silver da área sai da silver
 # completa, diferença zero prova a cadeia inteira: bronze -> completa ->
 # área. Resultado em auditoria/reprodutibilidade_rais.csv na gold da área.
 

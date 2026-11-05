@@ -37,7 +37,7 @@ def _descrever(slug: str) -> dict:
         "sigla": a["sigla"],
         "resumo": a["resumo"],
         # Repositório e pasta da gold da área: o site lê as tabelas dali.
-        "repo": f"Gianpedro/mercadobrasil-{slug}/gold",
+        "repo": f"Gianpedro/mercadobrasil-{slug}/gold-{slug}",
         "subareas": list(a["subareas"]),
         # Os nomes das famílias e dos códigos avulsos: o site monta com eles a
         # árvore de ocupações (subárea → família → ocupação).

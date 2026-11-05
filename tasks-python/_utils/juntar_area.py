@@ -2,9 +2,9 @@
 Migração única: junta tudo de uma área num repositório só, Gianpedro/mercadobrasil-<área>,
 uma pasta por camada.
 
-    silver-caged-<área>              -> mercadobrasil-<área>/silver-caged/
-    silver-rais-<área>               -> mercadobrasil-<área>/silver-rais/
-    gold-mercado-brasil/<área>/      -> mercadobrasil-<área>/gold/
+    silver-caged-<área>              -> mercadobrasil-<área>/silver-caged-<área>/
+    silver-rais-<área>               -> mercadobrasil-<área>/silver-rais-<área>/
+    gold-mercado-brasil/<área>/      -> mercadobrasil-<área>/gold-<área>/
 
 O caminho mais caro (o CAGED, ~580 arquivos por área) não baixa nada: o
 repositório silver-caged-<área> é RENOMEADO para mercadobrasil-<área>, e os arquivos
@@ -29,10 +29,9 @@ sys.path.insert(0, str(_AQUI.parent))
 
 from _utils import nuvem  # noqa: E402
 from _utils.areas import AREAS  # noqa: E402
-from _utils.cartoes_raiz import publicar_raiz  # noqa: E402
+from _utils.cartoes_raiz import pastas, publicar_raiz  # noqa: E402
 
 USUARIO = "Gianpedro"
-PASTAS = (nuvem.pasta_base("caged"), nuvem.pasta_base("rais"), nuvem.PASTA_GOLD)
 # O Hub recomenda commits de até ~100 arquivos; os 2 GB seguram o disco do runner.
 MAX_ARQUIVOS, MAX_BYTES = 100, 2 * 1024**3
 
@@ -58,15 +57,15 @@ def renomear_caged(api, area: str, alvo: str) -> None:
         print(f"🆕 {alvo} criado ({caged} não existia)")
 
 
-def caged_para_pasta(api, alvo: str) -> None:
-    """O que o CAGED deixou na raiz vai para silver-caged/, sem baixar os parquets."""
+def caged_para_pasta(api, alvo: str, area: str) -> None:
+    """O que o CAGED deixou na raiz vai para silver-caged-<área>/, sem baixar os parquets."""
     from huggingface_hub import CommitOperationAdd, CommitOperationCopy, CommitOperationDelete, hf_hub_download
 
-    na_raiz = {c: f for c, f in _arquivos(api, alvo).items() if not c.startswith(tuple(f"{p}/" for p in PASTAS))}
+    na_raiz = {c: f for c, f in _arquivos(api, alvo).items() if not c.startswith(tuple(f"{p}/" for p, _ in pastas(area)))}
     if not na_raiz:
         print("✅ nada do CAGED na raiz")
         return
-    pasta = nuvem.pasta_base("caged")
+    pasta = nuvem.pasta_base("caged", area)
     temp = nuvem.DIR_TEMP / "juntar_caged"
 
     def novo(caminho: str) -> str:
@@ -149,9 +148,9 @@ def main() -> int:
     nuvem.preparar_staging()
 
     renomear_caged(api, area, alvo)
-    caged_para_pasta(api, alvo)
-    copiar_de(api, f"{USUARIO}/silver-rais-{area}", "", alvo, nuvem.pasta_base("rais"))
-    copiar_de(api, f"{USUARIO}/gold-mercado-brasil", f"{area}/", alvo, nuvem.PASTA_GOLD)
+    caged_para_pasta(api, alvo, area)
+    copiar_de(api, f"{USUARIO}/silver-rais-{area}", "", alvo, nuvem.pasta_base("rais", area))
+    copiar_de(api, f"{USUARIO}/gold-mercado-brasil", f"{area}/", alvo, nuvem.pasta_gold(area))
     publicar_raiz(alvo, area)
 
     # Conferência: cada pasta com o que a origem tinha.

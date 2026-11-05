@@ -2,7 +2,7 @@ name: Juntar área num repositório (uso único)
 run-name: "Juntar área · ${{ inputs.areas || 'todas' }}"
 
 # Junta silver-caged-<área>, silver-rais-<área> e gold-mercado-brasil/<área>
-# em Gianpedro/mercadobrasil-<área>, uma pasta por camada. O CAGED é renomeado e
+# em Gianpedro/mercadobrasil-<área>, uma pasta por camada (silver-caged-<área>/, ...). O CAGED é renomeado e
 # muda de pasta dentro do próprio repositório, sem baixar nada; só a RAIS e a
 # gold passam pelo runner. Pode rodar de novo depois de uma falha: o que já
 # foi copiado é pulado. Não apaga os repositórios antigos.

@@ -2,7 +2,7 @@ name: Reprodutibilidade CAGED por área
 run-name: "Reprodutibilidade CAGED · ${{ inputs.area }}"
 
 # Conta o recorte da área no microdado bruto (bronze-caged), por tabela e
-# ano, e compara com mercadobrasil-<área>/silver-caged. Como a silver da área sai da
+# ano, e compara com mercadobrasil-<área>/silver-caged-<área>. Como a silver da área sai da
 # silver completa, diferença zero prova a cadeia inteira: bronze ->
 # completa -> área. Resultado em auditoria/reprodutibilidade_caged.csv na
 # gold da área.

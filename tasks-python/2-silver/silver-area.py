@@ -1,7 +1,7 @@
 """
 Silver de área — recorta da silver completa (a base inteira já traduzida) o
 que é da área pedida em AREA e publica na pasta da base no repositório da
-área (Gianpedro/mercadobrasil-tec/silver-caged/..., Gianpedro/mercadobrasil-saude/silver-rais/...).
+área (Gianpedro/mercadobrasil-tec/silver-caged-tec/..., Gianpedro/mercadobrasil-saude/silver-rais-saude/...).
 
 Não traduz nada: a tradução é a da silver completa, a mesma da silver de TI
 (silver-caged-ti.py com --completa). Recortar TI da completa dá, linha a
