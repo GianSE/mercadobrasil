@@ -10,7 +10,8 @@ on:
       area:
         description: "Área do recorte"
         type: choice
-        options: [tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
+        options: ["escolha a área", tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
+        default: "escolha a área"
         required: true
       base:
         description: "Qual base refazer (a outra vem da gold publicada)"

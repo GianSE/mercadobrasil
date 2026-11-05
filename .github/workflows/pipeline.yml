@@ -36,7 +36,8 @@ on:
       area:
         description: "Área do recorte"
         type: choice
-        options: [tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
+        options: ["escolha a área", tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
+        default: "escolha a área"
         required: true
       comecar_em:
         description: "bronze = tudo; silver completa = pula a bronze; silver área = só as áreas; gold = refaz a gold sem verificar a silver"
@@ -60,6 +61,10 @@ jobs:
     steps:
       - id: calc
         run: |
+          if [ "${{ inputs.area }}" = "escolha a área" ]; then
+            echo "::error::Escolha a área no menu antes de rodar."
+            exit 1
+          fi
           COMECAR="${{ inputs.comecar_em }}"
           case "$COMECAR" in "silver completa") COMECAR=completa;; "silver área") COMECAR=silver;; esac
           echo "Área: ${{ inputs.area }} | começando em: $COMECAR"
