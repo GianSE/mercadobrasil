@@ -39,10 +39,10 @@ on:
         options: [tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
         required: true
       comecar_em:
-        description: "A partir de qual camada rodar"
+        description: "bronze = tudo; silver completa = pula a bronze; silver área = só as áreas; gold = refaz a gold sem verificar a silver"
         type: choice
-        options: [bronze, completa, silver, gold]
-        default: silver
+        options: [bronze, "silver completa", "silver área", gold]
+        default: "silver área"
       ano_inicio:
         description: "Ano inicial para bronze/silver (vazio = padrão de cada etapa)"
       ano_fim:
@@ -61,6 +61,7 @@ jobs:
       - id: calc
         run: |
           COMECAR="${{ inputs.comecar_em }}"
+          case "$COMECAR" in "silver completa") COMECAR=completa;; "silver área") COMECAR=silver;; esac
           echo "Área: ${{ inputs.area }} | começando em: $COMECAR"
           ligar() { for camada in bronze completa silver gold; do
                       [ "$camada" = "$1" ] && ativo=true

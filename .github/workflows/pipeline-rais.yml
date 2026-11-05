@@ -22,9 +22,9 @@ on:
         options: [todas, tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
         default: todas
       comecar_em:
-        description: "bronze = tudo; completa = pula a bronze; silver = só as áreas; gold = refaz a gold sem verificar a silver"
+        description: "bronze = tudo; silver completa = pula a bronze; silver área = só as áreas; gold = refaz a gold sem verificar a silver"
         type: choice
-        options: [bronze, completa, silver, gold]
+        options: [bronze, "silver completa", "silver área", gold]
         default: bronze
 
 concurrency:
@@ -50,7 +50,7 @@ jobs:
           fi
           COMECAR="${{ inputs.comecar_em || 'bronze' }}"
           echo "bronze=$([ "$COMECAR" = bronze ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
-          echo "completa=$(case "$COMECAR" in bronze|completa) echo true;; *) echo false;; esac)" >> "$GITHUB_OUTPUT"
+          echo "completa=$(case "$COMECAR" in bronze|"silver completa") echo true;; *) echo false;; esac)" >> "$GITHUB_OUTPUT"
           echo "Áreas: $AREA | começando em: $COMECAR"
 
   bronze-rais:
