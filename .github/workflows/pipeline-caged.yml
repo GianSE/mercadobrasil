@@ -24,9 +24,9 @@ on:
         options: [todas, tec, saude, educacao, agronegocio, financas, industria, construcao, logistica, comercio, engenharia]
         default: todas
       comecar_em:
-        description: "bronze = tudo; silver = só as áreas; gold = refaz a gold sem verificar a silver"
+        description: "bronze = tudo; completa = pula a bronze; silver = só as áreas; gold = refaz a gold sem verificar a silver"
         type: choice
-        options: [bronze, silver, gold]
+        options: [bronze, completa, silver, gold]
         default: bronze
       anos_gold:
         description: "Anos da gold do CAGED: recentes (corrente e anterior) ou todos"
@@ -45,7 +45,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       areas: ${{ steps.calc.outputs.areas }}
-      comuns: ${{ steps.calc.outputs.comuns }}
+      bronze: ${{ steps.calc.outputs.bronze }}
+      completa: ${{ steps.calc.outputs.completa }}
     steps:
       - id: calc
         run: |
@@ -56,24 +57,25 @@ jobs:
             echo "areas=[\"$AREA\"]" >> "$GITHUB_OUTPUT"
           fi
           COMECAR="${{ inputs.comecar_em || 'bronze' }}"
-          echo "comuns=$([ "$COMECAR" = bronze ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "bronze=$([ "$COMECAR" = bronze ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "completa=$(case "$COMECAR" in bronze|completa) echo true;; *) echo false;; esac)" >> "$GITHUB_OUTPUT"
           echo "Áreas: $AREA | começando em: $COMECAR | anos da gold: ${{ inputs.anos_gold || 'recentes' }}"
 
   bronze-caged:
     needs: decidir
-    if: needs.decidir.outputs.comuns == 'true'
+    if: needs.decidir.outputs.bronze == 'true'
     uses: ./.github/workflows/bronze-caged.yml
     secrets: inherit
 
   dicionario:
     needs: decidir
-    if: needs.decidir.outputs.comuns == 'true'
+    if: needs.decidir.outputs.bronze == 'true'
     uses: ./.github/workflows/dicionario.yml
     secrets: inherit
 
   silver-caged-completa:
     needs: [decidir, bronze-caged, dicionario]
-    if: needs.decidir.outputs.comuns == 'true' && !failure() && !cancelled()
+    if: needs.decidir.outputs.completa == 'true' && !failure() && !cancelled()
     uses: ./.github/workflows/silver-caged-completa.yml
     secrets: inherit
 
