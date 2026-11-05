@@ -6,8 +6,8 @@ import { useEffect, useState } from "react";
 const compressors = { ZSTD: (entrada: Uint8Array) => decompress(entrada) };
 
 /*
- * Os dados não vêm no build: a gold de todas as áreas fica num repositório do
- * Hugging Face, uma pasta por área (gold-mercado-brasil/saude/...), e o site
+ * Os dados não vêm no build: a gold de cada área fica na pasta gold-<área>/ do
+ * repositório da área no Hugging Face (mercadobrasil-saude/gold-saude/...), e o site
  * lê de lá as tabelas que a página pede. As funções recebem o caminho
  * "usuário/repositório/pasta" (o `repo` de areas.json). A base fica numa
  * variável para poder trocar o Hub por outro endereço (um bucket R2, por
@@ -22,10 +22,11 @@ const SEM_REFERER: RequestInit = { referrerPolicy: "no-referrer" };
 
 export type Linha = Record<string, unknown>;
 
-type InfoGold = { sha: string; atualizado: Date; tabelas: Set<string>; repo: string; pasta: string };
-type RespostaApi = { sha: string; lastModified: string; siblings?: { rfilename: string }[] };
+/** `tabelas`: o nome de cada tabela da gold -> o último commit que a mudou. */
+type InfoGold = { atualizado: Date; tabelas: Map<string, string>; repo: string; pasta: string };
+type Arquivo = { type: string; path: string; lastCommit?: { id: string; date: string } };
 
-const respostas = new Map<string, Promise<RespostaApi>>();
+const listagens = new Map<string, Promise<Arquivo[]>>();
 const tabelas = new Map<string, Promise<Linha[] | null>>();
 
 /** "usuário/repositório/pasta" -> o repositório e a pasta (vazia na gold de uma área só, como a do TCC). */
@@ -34,34 +35,57 @@ function separar(caminho: string): { repo: string; pasta: string } {
   return { repo: partes.slice(0, 2).join("/"), pasta: partes.slice(2).join("/") };
 }
 
-/** A listagem do repositório: uma chamada por repositório e sessão, para todas as áreas. */
-function listar(repo: string): Promise<RespostaApi> {
-  let resposta = respostas.get(repo);
-  if (!resposta) {
-    resposta = fetch(`${BASE}/api/datasets/${repo}`, SEM_REFERER).then((r) => {
-      // O repositório ainda não existe (a primeira gold não rodou): não é erro,
-      // só não há tabela nenhuma. Sem login, o Hub responde 401 (e não 404) a
-      // repositório inexistente.
-      if (r.status === 404 || r.status === 401) return { sha: "", lastModified: new Date(0).toISOString(), siblings: [] };
-      if (!r.ok) throw new Error(`${repo}: HTTP ${r.status}`);
-      return r.json();
-    });
-    resposta.catch(() => respostas.delete(repo));
-    respostas.set(repo, resposta);
-  }
-  return resposta;
+/** O endereço da próxima página no cabeçalho Link (`<url>; rel="next"`), ou null. */
+function proximaPagina(link: string | null): string | null {
+  const m = link?.match(/<([^>]+)>;\s*rel="next"/);
+  return m ? m[1] : null;
 }
 
-/** O commit atual e as tabelas que a área publicou (os .parquet direto na pasta dela). */
+/**
+ * Os arquivos direto na pasta da gold, cada um com o último commit que o
+ * mudou: uma chamada por pasta e sessão. Só a pasta, e não o repositório
+ * inteiro: no repositório da área a silver mora ao lado, e um commit dela não
+ * pode mudar a data da gold nem invalidar o cache das tabelas.
+ */
+function listar(repo: string, pasta: string): Promise<Arquivo[]> {
+  const chave = `${repo}/${pasta}`;
+  let listagem = listagens.get(chave);
+  if (!listagem) {
+    listagem = (async () => {
+      const arquivos: Arquivo[] = [];
+      let url: string | null = `${BASE}/api/datasets/${repo}/tree/main${pasta ? `/${pasta}` : ""}?expand=true`;
+      while (url) {
+        const r: Response = await fetch(url, SEM_REFERER);
+        // O repositório ou a pasta ainda não existem (a primeira gold não
+        // rodou): não é erro, só não há tabela nenhuma. Sem login, o Hub
+        // responde 401 (e não 404) a repositório inexistente.
+        if (r.status === 404 || r.status === 401) return arquivos;
+        if (!r.ok) throw new Error(`${repo}: HTTP ${r.status}`);
+        arquivos.push(...((await r.json()) as Arquivo[]));
+        // Com expand, o Hub pagina; o resto vem pelo cabeçalho Link.
+        url = proximaPagina(r.headers.get("Link"));
+      }
+      return arquivos;
+    })();
+    listagem.catch(() => listagens.delete(chave));
+    listagens.set(chave, listagem);
+  }
+  return listagem;
+}
+
+/** As tabelas que a área publicou (os .parquet direto na pasta dela) e quando a gold mudou por último. */
 export async function infoGold(caminho: string): Promise<InfoGold> {
   const { repo, pasta } = separar(caminho);
-  const d = await listar(repo);
   const prefixo = pasta ? `${pasta}/` : "";
-  const tabelasDaPasta = (d.siblings ?? [])
-    .map((s) => s.rfilename)
-    .filter((f) => f.startsWith(prefixo) && f.endsWith(".parquet") && !f.slice(prefixo.length).includes("/"))
-    .map((f) => f.slice(prefixo.length, -8));
-  return { sha: d.sha, atualizado: new Date(d.lastModified), tabelas: new Set(tabelasDaPasta), repo, pasta };
+  const tabelasDaPasta = new Map<string, string>();
+  let atualizado = new Date(0);
+  for (const a of await listar(repo, pasta)) {
+    if (a.type !== "file" || !a.path.endsWith(".parquet")) continue;
+    tabelasDaPasta.set(a.path.slice(prefixo.length, -8), a.lastCommit?.id ?? "main");
+    const data = a.lastCommit ? new Date(a.lastCommit.date) : null;
+    if (data && data > atualizado) atualizado = data;
+  }
+  return { atualizado, tabelas: tabelasDaPasta, repo, pasta };
 }
 
 /** Números grandes do Parquet chegam como BigInt; os gráficos e a formatação querem Number. */
@@ -77,11 +101,12 @@ function normalizar(linha: Linha): Linha {
  */
 export async function baixarTabela(caminho: string, nome: string): Promise<ArrayBuffer | null> {
   const info = await infoGold(caminho);
-  if (!info.tabelas.has(nome)) return null;
-  // Pela revisão, não por "main": o endereço não muda enquanto a gold não for
-  // republicada, e o cache do navegador pode guardá-lo.
+  const revisao = info.tabelas.get(nome);
+  if (!revisao) return null;
+  // Pelo último commit da tabela, não por "main": o endereço só muda quando a
+  // própria tabela muda, e o cache do navegador pode guardá-lo.
   const arquivo = info.pasta ? `${info.pasta}/${nome}.parquet` : `${nome}.parquet`;
-  const r = await fetch(`${BASE}/datasets/${info.repo}/resolve/${info.sha}/${arquivo}`, SEM_REFERER);
+  const r = await fetch(`${BASE}/datasets/${info.repo}/resolve/${revisao}/${arquivo}`, SEM_REFERER);
   if (!r.ok) throw new Error(`${nome}: HTTP ${r.status}`);
   return r.arrayBuffer();
 }
