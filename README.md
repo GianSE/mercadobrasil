@@ -59,11 +59,11 @@ No GitHub Actions, a lista de workflows se agrupa pelo nome:
 |---|---|---|
 | **1 · CAGED (semanal)** | sozinho, toda terça | o mês novo do CAGED em todas as áreas: silver da área, gold do CAGED (ano corrente e anterior), o fluxo do mapa, previsão e nowcast |
 | **2 · RAIS (mensal)** | sozinho, todo dia 15 | o ano novo da RAIS em todas as áreas: silver da área, gold da RAIS, o estoque do mapa, hiato e sobrevivência |
-| **3 · Carga inicial de uma área (CAGED + RAIS)** | à mão | montar uma área nova ou refazer uma área inteira, as duas bases num clique |
-| **Etapa · ...** | à mão, raramente | uma etapa solta, para consertar algo pontual (refazer a silver de um ano, por exemplo) |
-| **Auditoria · ...** | à mão | confere a silver da área contra a contagem direto na bronze |
 | **Alerta · Dicionário MTE** | sozinho, todo dia 1 | avisa se o MTE publicou dicionário novo |
-| **Interno · ...** | nunca | peças que o 1 e o 2 chamam para cada área; não têm botão de rodar |
+| **Auditoria · ...** | à mão | confere a silver da área contra a contagem direto na bronze |
+| **Etapa · ...** | à mão, raramente | uma etapa solta, para consertar algo pontual (refazer a silver de um ano, por exemplo) |
+| **Novo · Carga inicial de uma área (CAGED + RAIS)** | à mão | montar uma área nova ou refazer uma área inteira, as duas bases num clique |
+| **Uso interno · ...** | nunca | peças que o 1 e o 2 chamam para cada área; não têm botão de rodar |
 
 Nas filas 1 e 2, sem dado novo cada etapa verifica e para, sem rodar a gold.
 O mapa é a junção de uma parte de cada base: cada fila refaz a sua e

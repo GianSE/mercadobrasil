@@ -1,4 +1,4 @@
-name: 3 · Carga inicial de uma área (CAGED + RAIS)
+name: Novo · Carga inicial de uma área (CAGED + RAIS)
 run-name: "Carga inicial · ${{ inputs.area }} · desde ${{ inputs.comecar_em }}"
 
 # A fila COMPLETA de uma área, CAGED e RAIS juntos, só manual: para montar
