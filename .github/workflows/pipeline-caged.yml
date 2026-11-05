@@ -1,4 +1,4 @@
-name: 1 · CAGED (semanal)
+name: Pipeline · CAGED (semanal)
 run-name: "CAGED · ${{ inputs.area || 'todas' }} · desde ${{ inputs.comecar_em || 'bronze' }}"
 
 # A fila do CAGED, que sai todo mês, para todas as áreas. Roda sozinha toda
