@@ -5,34 +5,36 @@
 
 /*
  * Tema da logo (logo/logo-paleta-mercadobrasil/tema.css), em hex para o
- * Tailwind 4: claro em off-white com o marinho da logo como tinta; escuro no
- * marinho da logo. Verde da logo como cor principal, azul nos destaques.
+ * Tailwind 4. Claro: off-white quente, sem branco puro, que cansa menos a
+ * vista; o marinho da logo como tinta. Escuro: um marinho quase preto, mais
+ * fundo que o da logo. Verde da logo como cor principal, azul nos destaques.
  *
  * As sete séries dos gráficos foram validadas para daltonismo contra o cartão
- * de cada tema (os gráficos ficam sempre num cartão: branco no claro, #06193A
- * no escuro) com o validador da skill dataviz: separação CVD >= 8,8, visão
- * normal >= 18, contraste >= 3:1. Mesma ordem e mesmos matizes nos dois
- * temas: azul e verde da marca, rosa, ocre, roxo, verde-água, laranja.
+ * de cada tema (os gráficos ficam sempre num cartão: #fbfaf7 no claro,
+ * #08152a no escuro) com o validador da skill dataviz: separação CVD >= 8,8,
+ * visão normal >= 19, contraste >= 3:1. Mesma ordem e mesmos matizes nos dois
+ * temas: azul e verde da marca, rosa, ocre, roxo, verde-água, laranja. Mudou
+ * a cor do cartão, valide de novo.
  */
 :root {
-  --background: #f7f8fa;
-  --foreground: #001229;          /* o marinho da logo vira o texto */
-  --card: #ffffff;
+  --background: #f4f2ed;
+  --foreground: #001229;          /* o marinho da logo vira o texto, 16,8:1 */
+  --card: #fbfaf7;
   --card-foreground: #001229;
-  --popover: #ffffff;
+  --popover: #fbfaf7;
   --popover-foreground: #001229;
-  --primary: #0d8241;             /* verde da logo, 4,6:1 */
+  --primary: #0d8241;             /* verde da logo; texto branco sobre ele 4,7:1 */
   --primary-foreground: #ffffff;
-  --secondary: #eceff3;
+  --secondary: #eae7e0;
   --secondary-foreground: #001229;
-  --muted: #eceff3;
-  --muted-foreground: #56637a;    /* 5,7:1 sobre o fundo */
+  --muted: #eae7e0;
+  --muted-foreground: #56637a;    /* 5,4:1 sobre o fundo, 5,8:1 no cartão */
   --accent: #e7f1f9;              /* azul bem claro para hover e seleção */
   --accent-foreground: #01549a;
   --destructive: #c2362b;
   --destructive-foreground: #ffffff;
-  --border: #dce1e8;
-  --input: #dce1e8;
+  --border: #ddd9cf;
+  --input: #ddd9cf;
   --ring: #0d8241;
   --radius: 0.625rem;
 
@@ -43,8 +45,8 @@
   --chart-5: #7d5da8;
   --chart-6: #2a9d90;
   --chart-7: #c7621b;
-  --chart-grade: #dce1e8;
-  --chart-eixo: #b9c2cf;
+  --chart-grade: #ddd9cf;
+  --chart-eixo: #c2bdb1;
   --chart-rotulo: #56637a;
   --sobe: #006300;
   --desce: #c2362b;
@@ -64,24 +66,24 @@
 }
 
 .dark {
-  --background: #001229;
-  --foreground: #eef2f6;
-  --card: #06193a;
+  --background: #020b18;          /* marinho quase preto */
+  --foreground: #eef2f6;          /* 17,6:1 */
+  --card: #08152a;
   --card-foreground: #eef2f6;
-  --popover: #06193a;
+  --popover: #08152a;
   --popover-foreground: #eef2f6;
-  --primary: #3dba6a;             /* 7,5:1 */
+  --primary: #3dba6a;             /* 7,9:1 */
   --primary-foreground: #001229;
-  --secondary: #0e2446;
+  --secondary: #0d1c34;
   --secondary-foreground: #eef2f6;
-  --muted: #0e2446;
-  --muted-foreground: #94a3b8;    /* 7,3:1 */
-  --accent: #0e2446;
+  --muted: #0d1c34;
+  --muted-foreground: #94a3b8;    /* 7,7:1 */
+  --accent: #0d1c34;
   --accent-foreground: #5ba3e0;
   --destructive: #f0705f;
   --destructive-foreground: #001229;
-  --border: #1c3358;
-  --input: #1c3358;
+  --border: #1a2b45;
+  --input: #1a2b45;
   --ring: #3dba6a;
 
   --chart-1: #318be6;
@@ -91,8 +93,8 @@
   --chart-5: #a577e3;
   --chart-6: #179a8e;
   --chart-7: #dd6f23;
-  --chart-grade: #1c3358;
-  --chart-eixo: #2d4a75;
+  --chart-grade: #1a2b45;
+  --chart-eixo: #2a3e5e;
   --chart-rotulo: #94a3b8;
   --sobe: #3dba6a;
   --desce: #f0705f;
