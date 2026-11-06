@@ -1,15 +1,36 @@
 import type { EChartsCoreOption } from "echarts/core";
-import { base, eixo, type Tinta } from "../components/Grafico";
+import { animacao, base, eixo, type Tinta } from "../components/Grafico";
 import { fmt } from "./formato";
 
 /*
  * Os gráficos das seções, a partir dos do site do TCC (dashboards/src/lib/
- * graficos.ts), com as cores do tema novo. A paleta validada tem seis cores:
- * da sétima série em diante, cinza com o nome no fim da linha, em vez de uma
+ * graficos.ts), com as cores do tema novo. A paleta validada tem sete cores:
+ * da oitava série em diante, cinza com o nome no fim da linha, em vez de uma
  * cor nova que se confundiria com outra.
  */
 
 export type Formato = (v: number) => string;
+
+/**
+ * Preenchimento de barra em degradê: a cor cheia na ponta (o valor) e mais
+ * clara, misturada com o fundo do cartão, junto do eixo. A identidade da
+ * série continua sendo a cor da ponta. `sentido` é para onde a barra cresce.
+ */
+export function degrade(cor: string, fundo: string, sentido: "cima" | "baixo" | "direita") {
+  const junto = misturar(cor, fundo, 0.42); // a cor junto do eixo
+  const [x2, y2] = sentido === "direita" ? [1, 0] : [0, 1];
+  const [inicio, fim] = sentido === "cima" ? [cor, junto] : [junto, cor];
+  return { type: "linear", x: 0, y: 0, x2, y2, colorStops: [{ offset: 0, color: inicio }, { offset: 1, color: fim }] };
+}
+
+/** Área sob uma linha: a cor da série no alto, sumindo até o eixo. */
+export function areaDegrade(cor: string, forca = 0.28) {
+  const rgba = (a: number) => `rgba(${[1, 3, 5].map((i) => parseInt(cor.slice(i, i + 2), 16)).join(",")},${a})`;
+  return { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: rgba(forca) }, { offset: 1, color: rgba(0.02) }] } };
+}
+
+/** As barras sobem em cascata, da primeira à última, sem a entrada passar de ~0,7 s. */
+export const cascata = (n: number) => (i: number) => Math.round((i * Math.min(18, 700 / Math.max(n, 1))));
 
 export type SerieLinha = { nome: string; dados: (number | null)[]; area?: boolean; cinza?: boolean };
 
@@ -90,7 +111,7 @@ export function opcaoLinhas(
         connectNulls: false,
         lineStyle: { width: s.cinza ? 1.5 : 2, color: c },
         itemStyle: { color: c, borderColor: t.fundo, borderWidth: 2 },
-        areaStyle: s.area ? { color: c, opacity: 0.14 } : undefined,
+        areaStyle: s.area ? areaDegrade(c) : undefined,
         endLabel: o.rotuloFinal
           ? { show: true, color: t.texto, fontSize: 11, offset: [0, deslocamento[i] ?? 0], width: margem - 10, overflow: "truncate", formatter: () => s.nome }
           : undefined,
@@ -103,8 +124,9 @@ export function opcaoLinhas(
 export type SerieFluxo = "admissoes" | "desligamentos" | "saldo";
 
 /**
- * Admissões para cima, desligamentos para baixo (o sinal é só desenho: no
- * tooltip o desligamento aparece positivo) e o saldo como linha por cima.
+ * Admissões para cima, em verde, desligamentos para baixo, em vermelho (o
+ * sinal é só desenho: no tooltip o desligamento aparece positivo), e o saldo
+ * como linha por cima.
  */
 export function opcaoFluxo(
   t: Tinta,
@@ -113,18 +135,26 @@ export function opcaoFluxo(
   o: { visiveis: SerieFluxo[]; esmaecer?: number[] },
 ): EChartsCoreOption {
   const muitos = x.length > 40;
-  const barra = (nome: string, dados: (number | null)[], cor: string) => ({
+  const corDe: Record<string, string> = { Admissões: t.sobe, Desligamentos: t.desce, Saldo: t.texto };
+  const barra = (nome: string, dados: (number | null)[], cor: string, sentido: "cima" | "baixo") => ({
     type: "bar",
     name: nome,
     stack: "fluxo",
     data: dados.map((v, i) => ({ value: v, itemStyle: { opacity: o.esmaecer?.includes(i) ? 0.45 : 1 } })),
-    itemStyle: { color: cor, borderColor: t.fundo, borderWidth: muitos ? 0 : 1 },
+    itemStyle: {
+      color: degrade(cor, t.fundo, sentido),
+      borderColor: t.fundo,
+      borderWidth: muitos ? 0 : 1,
+      // A ponta arredondada é a do valor, longe do eixo.
+      borderRadius: muitos ? 0 : sentido === "cima" ? [4, 4, 0, 0] : [0, 0, 4, 4],
+    },
     barMaxWidth: 34,
     barCategoryGap: muitos ? "12%" : "30%",
+    animationDelay: cascata(x.length),
   });
   const series = [
-    o.visiveis.includes("admissoes") && barra("Admissões", d.admissoes, t.series[0]),
-    o.visiveis.includes("desligamentos") && barra("Desligamentos", d.desligamentos.map((v) => (v === null ? null : -v)), t.series[1]),
+    o.visiveis.includes("admissoes") && barra("Admissões", d.admissoes, t.sobe, "cima"),
+    o.visiveis.includes("desligamentos") && barra("Desligamentos", d.desligamentos.map((v) => (v === null ? null : -v)), t.desce, "baixo"),
     o.visiveis.includes("saldo") && {
       type: "line",
       name: "Saldo",
@@ -153,7 +183,8 @@ export function opcaoFluxo(
             const v = typeof valor === "object" && valor !== null ? (valor.value ?? null) : valor;
             if (v === null || !Number.isFinite(v)) return "";
             const texto = p.seriesName === "Desligamentos" ? fmt.inteiro(-v) : p.seriesName === "Saldo" ? fmt.sinal(v) : fmt.inteiro(v);
-            return `<div style="display:flex;align-items:center;gap:6px;margin-top:3px"><span style="width:10px;height:3px;border-radius:2px;background:${p.seriesName === "Saldo" ? t.texto : String(p.color)}"></span><b>${texto}</b><span style="opacity:.7">${p.seriesName}</span></div>`;
+            // A cor pelo nome da série: a das barras é um degradê, não uma cor só.
+            return `<div style="display:flex;align-items:center;gap:6px;margin-top:3px"><span style="width:10px;height:3px;border-radius:2px;background:${corDe[p.seriesName ?? ""] ?? t.texto}"></span><b>${texto}</b><span style="opacity:.7">${p.seriesName}</span></div>`;
           })
           .join("");
         return `<div style="font-size:11px;opacity:.7">${lista[0].axisValueLabel ?? ""}</div>${linhas}`;
@@ -170,14 +201,22 @@ export function opcaoBarrasH(
   t: Tinta,
   categorias: string[],
   valores: (number | null)[],
-  o: { formato?: Formato; nome?: string; cor?: string; larguraRotulo?: number } = {},
+  o: { formato?: Formato; formatoTooltip?: Formato; nome?: string; cor?: string; larguraRotulo?: number } = {},
 ): EChartsCoreOption {
   const formato = o.formato ?? fmt.compacto;
+  const formatoTooltip = o.formatoTooltip ?? formato;
+  const cor = o.cor ?? t.series[0];
   return {
     ...base(t),
     legend: { show: false },
     grid: { left: 8, right: 64, top: 8, bottom: 8, containLabel: true },
-    tooltip: { ...(base(t).tooltip as object), trigger: "item", valueFormatter: (v: number) => formato(v) },
+    tooltip: {
+      ...(base(t).tooltip as object),
+      trigger: "item",
+      // O marcador padrão leria a cor do degradê; aqui vai a cor da série.
+      formatter: (p: { name: string; value: number }) =>
+        `<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:${cor}"></span><b>${p.name}</b></div><div style="margin-top:2px">${Number.isFinite(p.value) ? formatoTooltip(p.value) : "—"}</div>`,
+    },
     xAxis: eixo(t, { type: "value", axisLabel: { show: false }, splitLine: { show: false } }),
     yAxis: eixo(t, {
       type: "category",
@@ -191,8 +230,9 @@ export function opcaoBarrasH(
         type: "bar",
         name: o.nome ?? "valor",
         data: valores,
-        itemStyle: { color: o.cor ?? t.series[0], borderRadius: [0, 4, 4, 0] },
+        itemStyle: { color: degrade(cor, t.fundo, "direita"), borderRadius: [0, 4, 4, 0] },
         barMaxWidth: 20,
+        animationDelay: cascata(valores.length),
         label: { show: true, position: "right", color: t.rotulo, formatter: (p: { value: number }) => formato(p.value) },
       },
     ],
@@ -306,7 +346,8 @@ export function opcaoRazaoChances(t: Tinta, itens: { rotulo: string; valor: numb
         type: "scatter",
         data: itens.map((i, k) => ({
           value: [i.valor, k],
-          itemStyle: i.p < 0.05 ? { color: i.valor >= 1 ? t.series[1] : t.series[0] } : { color: t.fundo, borderColor: t.rotulo, borderWidth: 1.5 },
+          // Mais chance de sair em vermelho, menos em verde; vazado se não difere da referência.
+          itemStyle: i.p < 0.05 ? { color: i.valor >= 1 ? t.desce : t.sobe } : { color: t.fundo, borderColor: t.rotulo, borderWidth: 1.5 },
         })),
         symbolSize: 10,
         markLine: { silent: true, symbol: "none", data: [{ xAxis: 1 }], lineStyle: { color: t.rotulo, type: "dashed" }, label: { show: false } },
@@ -343,6 +384,7 @@ export function opcaoHierarquia(t: Tinta, raiz: NoAnel[], o: { unidade: string }
   });
   const rotulo = { color: t.texto, textBorderColor: t.fundo, textBorderWidth: 2, fontSize: 11 };
   return {
+    ...animacao(),
     textStyle: { fontFamily: "inherit" },
     tooltip: {
       ...(base(t).tooltip as object),

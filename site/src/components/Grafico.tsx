@@ -37,6 +37,10 @@ export type Tinta = {
   grade: string;
   eixo: string;
   fundo: string;
+  /** admissões e saldo positivo */
+  sobe: string;
+  /** desligamentos e saldo negativo */
+  desce: string;
 };
 
 function lerTinta(): Tinta {
@@ -51,19 +55,40 @@ function lerTinta(): Tinta {
     // marinho, e no escuro isso é o mais claro.
     sequencial: document.documentElement.classList.contains("dark")
       ? ["#1d5aa8", "#2f74c8", "#4d93e3", "#8dbcf0", "#cde2fb"]
-      : ["#8ab6eb", "#5a96df", "#3a7acb", "#2160aa", "#0f427f"],
+      : ["#80ade6", "#5490dc", "#3676c8", "#1f5ca5", "#0e3f7a"],
     texto: v("--foreground"),
     rotulo: v("--chart-rotulo"),
     grade: v("--chart-grade"),
     eixo: v("--chart-eixo"),
     fundo: v("--card"),
+    sobe: v("--sobe"),
+    desce: v("--desce"),
   };
 }
 
-/** O que todo gráfico do site compartilha: fonte, eixos discretos, tooltip no tema. */
+/** Quem pede menos movimento no sistema vê o gráfico pronto, sem animação. */
+const poucoMovimento = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * A entrada desenha o gráfico: a linha da esquerda para a direita, as barras
+ * crescendo do eixo, os anéis abrindo. Trocar um filtro anima a passagem de
+ * um estado ao outro, mais curta.
+ */
+export function animacao() {
+  return {
+    animation: !poucoMovimento(),
+    animationDuration: 1100,
+    animationEasing: "cubicOut",
+    animationDurationUpdate: 450,
+    animationEasingUpdate: "cubicOut",
+  } as const;
+}
+
+/** O que todo gráfico do site compartilha: fonte, eixos discretos, tooltip no tema, animação de entrada. */
 export function base(t: Tinta): EChartsCoreOption {
   return {
     color: t.series,
+    ...animacao(),
     textStyle: { fontFamily: "inherit", color: t.texto },
     grid: { left: 8, right: 16, top: 40, bottom: 8, containLabel: true },
     tooltip: {
@@ -118,6 +143,9 @@ export function Grafico({ opcao, altura = 300, rotulo, aoClicar }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const grafico = useRef<echarts.ECharts | null>(null);
   const { tema } = useTema();
+  // Só desenha quando o gráfico entra na tela: a animação de entrada acontece
+  // à vista, e não antes, com o gráfico ainda lá embaixo na página.
+  const [visivel, setVisivel] = useState(false);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -125,16 +153,27 @@ export function Grafico({ opcao, altura = 300, rotulo, aoClicar }: Props) {
     grafico.current = g;
     const observador = new ResizeObserver(() => g.resize());
     observador.observe(ref.current);
+    const vista = new IntersectionObserver(
+      (entradas) => {
+        if (entradas.some((e) => e.isIntersecting)) {
+          setVisivel(true);
+          vista.disconnect();
+        }
+      },
+      { threshold: 0.25 },
+    );
+    vista.observe(ref.current);
     return () => {
       observador.disconnect();
+      vista.disconnect();
       g.dispose();
       grafico.current = null;
     };
   }, []);
 
   useEffect(() => {
-    grafico.current?.setOption(opcao(lerTinta()), { notMerge: true });
-  }, [opcao, tema]);
+    if (visivel) grafico.current?.setOption(opcao(lerTinta()), { notMerge: true });
+  }, [opcao, tema, visivel]);
 
   useEffect(() => {
     const g = grafico.current;

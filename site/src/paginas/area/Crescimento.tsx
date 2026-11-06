@@ -178,7 +178,7 @@ function Fluxo({ area, periodo }: { area: Area; periodo: Periodo }) {
                       visiveis.includes(s.chave) ? "bg-card" : "text-muted-foreground line-through",
                     )}
                   >
-                    <span aria-hidden className={cn(i === 2 ? "h-0.5 w-3.5 rounded-full bg-foreground" : `size-2.5 rounded-[3px] ${i === 0 ? "bg-chart-1" : "bg-chart-2"}`, !visiveis.includes(s.chave) && "opacity-30")} />
+                    <span aria-hidden className={cn(i === 2 ? "h-0.5 w-3.5 rounded-full bg-foreground" : `size-2.5 rounded-[3px] ${i === 0 ? "bg-sobe" : "bg-desce"}`, !visiveis.includes(s.chave) && "opacity-30")} />
                     {s.rotulo}
                   </button>
                 ))}

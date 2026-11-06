@@ -1,5 +1,17 @@
 import type { Area } from "./areas";
-import type { Linha } from "./dados";
+import { useTabela, type Linha } from "./dados";
+
+/**
+ * O último ano da RAIS publicado na gold da área. Os Pipelines publicam o ano
+ * novo sozinhos, então o ano não pode ficar fixo no código: sai do próprio
+ * dado (o rais_estoque_anual é pequeno e já em cache). Enquanto carrega,
+ * undefined; sem a tabela (área ainda sem gold), o ano passado.
+ */
+export function useAnoRais(area: Area): number | undefined {
+  const e = useTabela(area.repo, "rais_estoque_anual", (l) => (l.length ? Math.max(...l.map((x) => Number(x.ano))) : null));
+  if (e.tipo === "carregando") return undefined;
+  return e.tipo === "pronto" && e.dados ? e.dados : new Date().getFullYear() - 1;
+}
 
 /*
  * Leituras da gold que mais de uma página usa. As colunas setor_da_area e

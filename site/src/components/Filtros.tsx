@@ -5,10 +5,10 @@ import { intervalo, type Periodo } from "../lib/sql";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 
-/** A faixa de filtros acima dos gráficos de uma seção. Fica presa no topo ao rolar. */
+/** A faixa de filtros acima dos gráficos de uma seção. Fica presa logo abaixo do cabeçalho (h-16) ao rolar. */
 export function BarraFiltros({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky top-14 z-20 -mx-4 mb-4 border-b bg-background/90 px-4 py-3 backdrop-blur">
+    <div className="sticky top-16 z-20 -mx-4 mb-4 border-b bg-background/90 px-4 py-3 backdrop-blur">
       <div className="flex flex-wrap items-end gap-4">{children}</div>
     </div>
   );

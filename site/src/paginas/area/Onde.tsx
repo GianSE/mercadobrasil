@@ -10,6 +10,7 @@ import { useConsulta, type LinhaSQL } from "../../lib/db";
 import { UFS, useFiltro } from "../../lib/filtro";
 import { fmt } from "../../lib/formato";
 import { opcaoBarrasH, opcaoMapa, type Formato } from "../../lib/graficos";
+import { useAnoRais } from "../../lib/rais";
 import { coluna, intervalo, literal, num, rotulos } from "../../lib/sql";
 import { useParametro } from "../../lib/url";
 
@@ -20,7 +21,6 @@ import { useParametro } from "../../lib/url";
  */
 
 const ANO_INICIAL = 2007;
-const ANO_RAIS = 2025;
 
 const METRICAS = {
   estoque: { rotulo: "Vínculos", coluna: "estoque", nome: "Vínculos ativos em 31/12", formato: fmt.inteiro, fonte: "RAIS" },
@@ -29,12 +29,17 @@ const METRICAS = {
 } as const;
 type Metrica = keyof typeof METRICAS;
 
-const lerAno = (s: string) => (/^\d{4}$/.test(s) && Number(s) >= ANO_INICIAL && Number(s) <= ANO_RAIS ? Number(s) : null);
-
+/** Espera o último ano da RAIS: o filtro de ano começa nele, e o padrão é lido uma vez só. */
 export function Onde({ area }: { area: Area }) {
+  const anoRais = useAnoRais(area);
+  return anoRais === undefined ? <Skeleton className="h-96" /> : <ConteudoOnde area={area} anoRais={anoRais} />;
+}
+
+function ConteudoOnde({ area, anoRais }: { area: Area; anoRais: number }) {
   const f = useFiltro();
   const q = (sql: string | null) => useConsulta(area.slug, area.repo, sql);
-  const [ano, setAno] = useParametro<number>("ano", ANO_RAIS, lerAno, String);
+  const lerAno = (s: string) => (/^\d{4}$/.test(s) && Number(s) >= ANO_INICIAL && Number(s) <= anoRais ? Number(s) : null);
+  const [ano, setAno] = useParametro<number>("ano", anoRais, lerAno, String);
   const [metrica, setMetrica] = useState<Metrica>("estoque");
   const m = METRICAS[metrica];
   const mapaPronto = useMapaBR();
@@ -65,7 +70,7 @@ export function Onde({ area }: { area: Area }) {
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-muted-foreground">Ano</span>
           <select aria-label="Ano" className="h-9 rounded-md border bg-card px-2.5 text-sm" value={ano} onChange={(e) => setAno(Number(e.target.value))}>
-            {intervalo(ANO_INICIAL, ANO_RAIS).reverse().map((a) => (
+            {intervalo(ANO_INICIAL, anoRais).reverse().map((a) => (
               <option key={a}>{a}</option>
             ))}
           </select>

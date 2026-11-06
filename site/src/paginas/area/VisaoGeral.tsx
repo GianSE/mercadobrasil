@@ -5,6 +5,7 @@ import { AneisRecorte } from "../../components/Recorte";
 import type { Area as TipoArea } from "../../lib/areas";
 import { useTabela, type Linha } from "../../lib/dados";
 import { fmt } from "../../lib/formato";
+import { areaDegrade, cascata, degrade, opcaoBarrasH } from "../../lib/graficos";
 import { estoqueAnual, LENTES, resumir, rotuloLente } from "../../lib/rais";
 
 /** Visão geral da área: os números do último ano, sem filtro e sem o DuckDB. */
@@ -82,14 +83,14 @@ export function VisaoGeral({ area }: { area: TipoArea }) {
                     type: "value",
                     axisLabel: { color: t.rotulo, formatter: (v: number) => fmt.compacto(v) },
                   }),
-                  series: LENTES.map((k) => ({
+                  series: LENTES.map((k, i) => ({
                     name: rotuloLente(area, k),
                     type: "line",
                     stack: "total",
                     data: e.porLente[k],
                     showSymbol: false,
                     lineStyle: { width: 2 },
-                    areaStyle: { opacity: 0.18 },
+                    areaStyle: areaDegrade(t.series[i], 0.3),
                   })),
                 })}
               />
@@ -153,11 +154,13 @@ export function VisaoGeral({ area }: { area: TipoArea }) {
                   {
                     name: "Saldo",
                     type: "bar",
+                    // Saldo positivo em verde, para cima; negativo em vermelho, para baixo.
                     data: d.map((m) => ({
                       value: m.saldo,
-                      itemStyle: { color: m.saldo >= 0 ? t.series[0] : t.series[1] },
+                      itemStyle: { color: m.saldo >= 0 ? degrade(t.sobe, t.fundo, "cima") : degrade(t.desce, t.fundo, "baixo") },
                     })),
                     barCategoryGap: "20%",
+                    animationDelay: cascata(d.length),
                   },
                 ],
               })}
@@ -176,34 +179,13 @@ export function VisaoGeral({ area }: { area: TipoArea }) {
 
 type Item = { nome: string; valor: number };
 
+/** Ranking do maior para o menor, o mesmo das outras seções (lib/graficos.ts). */
 function BarrasHorizontais({ itens, rotulo }: { itens: Item[]; rotulo: string }) {
-  const ordem = [...itens].reverse(); // o ECharts desenha de baixo para cima
   return (
     <Grafico
       rotulo={rotulo}
       altura={300}
-      opcao={(t) => ({
-        ...base(t),
-        legend: { show: false },
-        grid: { left: 8, right: 56, top: 8, bottom: 8, containLabel: true },
-        tooltip: { ...(base(t).tooltip as object), trigger: "item", valueFormatter: (v: number) => fmt.inteiro(v) },
-        xAxis: eixo(t, { type: "value", axisLabel: { show: false }, splitLine: { show: false } }),
-        yAxis: eixo(t, { type: "category", data: ordem.map((i) => i.nome), axisLine: { show: false } }),
-        series: [
-          {
-            type: "bar",
-            data: ordem.map((i) => i.valor),
-            itemStyle: { color: t.series[0], borderRadius: [0, 4, 4, 0] },
-            barMaxWidth: 22,
-            label: {
-              show: true,
-              position: "right",
-              color: t.rotulo,
-              formatter: (p: { value: number }) => fmt.compacto(p.value),
-            },
-          },
-        ],
-      })}
+      opcao={(t) => opcaoBarrasH(t, itens.map((i) => i.nome), itens.map((i) => i.valor), { formato: fmt.compacto, formatoTooltip: fmt.inteiro, larguraRotulo: 150 })}
     />
   );
 }

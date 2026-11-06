@@ -4,11 +4,13 @@ import { Grafico } from "../../components/Grafico";
 import { Painel } from "../../components/Painel";
 import { Titulo } from "../../components/Titulo";
 import { Segmentado } from "../../components/ui/segmentado";
+import { Skeleton } from "../../components/ui/skeleton";
 import type { Area } from "../../lib/areas";
 import { useConsulta, type LinhaSQL } from "../../lib/db";
 import { useFiltro } from "../../lib/filtro";
 import { fmt } from "../../lib/formato";
 import { opcaoBarrasH, opcaoLinhas } from "../../lib/graficos";
+import { useAnoRais } from "../../lib/rais";
 import { coluna, entre, medianaExata, medianaHist, num, ponderada, RECORTE, rotulos, tabelaRais, type Periodo } from "../../lib/sql";
 import { escreverPeriodo, lerPeriodo, useParametro } from "../../lib/url";
 
@@ -18,7 +20,6 @@ import { escreverPeriodo, lerPeriodo, useParametro } from "../../lib/url";
  */
 
 const ANO_INICIAL = 2007;
-const ANO_RAIS = 2025;
 
 // Escolaridade em ordem de nível, não de valor.
 const ESCOLARIDADES = ["Analfabeto", "Fundamental incompleto", "Fundamental completo", "Médio incompleto", "Médio completo", "Superior incompleto", "Superior completo", "Pós-graduação", "Mestrado", "Doutorado"];
@@ -29,12 +30,18 @@ const ROTULO_FAIXA: Record<string, string> = { "0-6m": "0–6 meses", "6-12m": "
 // em reais da época (o valor do contracheque, sem correção).
 type Unidade = "sm" | "reais";
 
+/** Espera o último ano da RAIS: o período começa nele, e o padrão é lido uma vez só. */
 export function Trabalho({ area }: { area: Area }) {
+  const anoRais = useAnoRais(area);
+  return anoRais === undefined ? <Skeleton className="h-96" /> : <ConteudoTrabalho area={area} anoRais={anoRais} />;
+}
+
+function ConteudoTrabalho({ area, anoRais }: { area: Area; anoRais: number }) {
   const f = useFiltro();
   const q = (sql: string | null) => useConsulta(area.slug, area.repo, sql);
-  const [periodo, setPeriodo] = useParametro<Periodo>("periodo", [ANO_INICIAL, ANO_RAIS], lerPeriodo, escreverPeriodo);
+  const [periodo, setPeriodo] = useParametro<Periodo>("periodo", [ANO_INICIAL, anoRais], lerPeriodo, escreverPeriodo);
   const [unidade, setUnidade] = useState<Unidade>("sm");
-  const fimRais = Math.min(periodo[1], ANO_RAIS);
+  const fimRais = Math.min(periodo[1], anoRais);
   const pRais: Periodo = [periodo[0], fimRais];
   const onde = f.ativo ? ` em ${f.rotulo}` : "";
 
@@ -77,7 +84,7 @@ export function Trabalho({ area }: { area: Area }) {
   return (
     <div className="flex flex-col gap-6">
       <BarraFiltros>
-        <FiltroPeriodo valor={periodo} aoMudar={setPeriodo} min={ANO_INICIAL} max={ANO_RAIS} />
+        <FiltroPeriodo valor={periodo} aoMudar={setPeriodo} min={ANO_INICIAL} max={anoRais} />
         <SeletorUF />
         <Segmentado<Unidade> rotulo="Salário em" valor={unidade} opcoes={[{ valor: "sm", rotulo: "Salários mínimos" }, { valor: "reais", rotulo: "Reais da época" }]} aoMudar={setUnidade} />
       </BarraFiltros>
@@ -127,7 +134,7 @@ export function Trabalho({ area }: { area: Area }) {
         </div>
       </section>
 
-      <Perfil area={area} periodo={periodo} />
+      <Perfil area={area} periodo={periodo} anoRais={anoRais} />
       <Permanencia area={area} anual={anual} />
     </div>
   );
@@ -147,14 +154,14 @@ const perfilSql = (dim: string, p: Periodo, territorio: string) => `
   FROM caged_cubo WHERE ${entre(p)} AND ${territorio} AND ${dim} IS NOT NULL AND ${dim} <> 'Não informado'
   GROUP BY 1 ORDER BY 2 DESC`;
 
-function Perfil({ area, periodo }: { area: Area; periodo: Periodo }) {
+function Perfil({ area, periodo, anoRais }: { area: Area; periodo: Periodo; anoRais: number }) {
   const f = useFiltro();
   const q = (sql: string | null) => useConsulta(area.slug, area.repo, sql);
   const sexo = q(perfilSql("sexo", periodo, f.sql()));
   const raca = q(perfilSql("raca_cor", periodo, f.sql()));
   const feminina = q(`
     SELECT ano, sum(estoque_3112) FILTER (WHERE sexo = 'Mulher') / sum(estoque_3112) FILTER (WHERE sexo IN ('Homem', 'Mulher')) AS mulheres
-    FROM rais_estoque_perfil WHERE ${RECORTE} AND ${entre([periodo[0], Math.min(periodo[1], ANO_RAIS)])} GROUP BY 1 ORDER BY 1`);
+    FROM rais_estoque_perfil WHERE ${RECORTE} AND ${entre([periodo[0], Math.min(periodo[1], anoRais)])} GROUP BY 1 ORDER BY 1`);
   const parte = (d: LinhaSQL[]) => {
     const total = d.reduce((s, l) => s + num(l, "admissoes"), 0);
     return d.map((l) => ({ ...l, parte: total ? num(l, "admissoes") / total : null }));

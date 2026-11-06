@@ -5,36 +5,40 @@
 
 /*
  * Tema da logo (logo/logo-paleta-mercadobrasil/tema.css), em hex para o
- * Tailwind 4. Claro: off-white quente, sem branco puro, que cansa menos a
- * vista; o marinho da logo como tinta. Escuro: um marinho quase preto, mais
- * fundo que o da logo. Verde da logo como cor principal, azul nos destaques.
+ * Tailwind 4. Claro: off-white quente, bem longe do branco puro, que cansa
+ * menos a vista; o marinho da logo como tinta. Escuro: um marinho quase preto,
+ * bem mais fundo que o da logo. Verde da logo como cor principal, azul nos
+ * destaques. Admissões e saldo positivo usam --sobe (verde); desligamentos e
+ * saldo negativo, --desce (vermelho).
  *
  * As sete séries dos gráficos foram validadas para daltonismo contra o cartão
- * de cada tema (os gráficos ficam sempre num cartão: #fbfaf7 no claro,
- * #08152a no escuro) com o validador da skill dataviz: separação CVD >= 8,8,
- * visão normal >= 19, contraste >= 3:1. Mesma ordem e mesmos matizes nos dois
- * temas: azul e verde da marca, rosa, ocre, roxo, verde-água, laranja. Mudou
- * a cor do cartão, valide de novo.
+ * de cada tema (os gráficos ficam sempre num cartão: #f6f5f0 no claro,
+ * #061120 no escuro) com o validador da skill dataviz: separação CVD >= 8,8
+ * (9,3 no escuro), visão normal >= 19, contraste >= 3:1. No escuro, cada cor
+ * está no teto de luminosidade e de saturação que a validação permite, para
+ * se destacar do marinho. Mesma ordem e mesmos matizes nos dois temas: azul e
+ * verde da marca, rosa, ocre, roxo, verde-água, laranja. Mudou a cor do
+ * cartão, valide de novo.
  */
 :root {
-  --background: #f4f2ed;
-  --foreground: #001229;          /* o marinho da logo vira o texto, 16,8:1 */
-  --card: #fbfaf7;
+  --background: #eeece6;
+  --foreground: #001229;          /* o marinho da logo vira o texto, 15,9:1 */
+  --card: #f6f5f0;
   --card-foreground: #001229;
-  --popover: #fbfaf7;
+  --popover: #f6f5f0;
   --popover-foreground: #001229;
   --primary: #0d8241;             /* verde da logo; texto branco sobre ele 4,7:1 */
   --primary-foreground: #ffffff;
-  --secondary: #eae7e0;
+  --secondary: #e5e2da;
   --secondary-foreground: #001229;
-  --muted: #eae7e0;
-  --muted-foreground: #56637a;    /* 5,4:1 sobre o fundo, 5,8:1 no cartão */
+  --muted: #e5e2da;
+  --muted-foreground: #56637a;    /* 5,1:1 sobre o fundo, 5,6:1 no cartão */
   --accent: #e7f1f9;              /* azul bem claro para hover e seleção */
   --accent-foreground: #01549a;
   --destructive: #c2362b;
   --destructive-foreground: #ffffff;
-  --border: #ddd9cf;
-  --input: #ddd9cf;
+  --border: #d6d1c6;
+  --input: #d6d1c6;
   --ring: #0d8241;
   --radius: 0.625rem;
 
@@ -45,8 +49,8 @@
   --chart-5: #7d5da8;
   --chart-6: #2a9d90;
   --chart-7: #c7621b;
-  --chart-grade: #ddd9cf;
-  --chart-eixo: #c2bdb1;
+  --chart-grade: #d6d1c6;
+  --chart-eixo: #bdb7aa;
   --chart-rotulo: #56637a;
   --sobe: #006300;
   --desce: #c2362b;
@@ -66,35 +70,35 @@
 }
 
 .dark {
-  --background: #020b18;          /* marinho quase preto */
-  --foreground: #eef2f6;          /* 17,6:1 */
-  --card: #08152a;
+  --background: #01070f;          /* marinho quase preto */
+  --foreground: #eef2f6;          /* 18:1 */
+  --card: #061120;
   --card-foreground: #eef2f6;
-  --popover: #08152a;
+  --popover: #061120;
   --popover-foreground: #eef2f6;
-  --primary: #3dba6a;             /* 7,9:1 */
+  --primary: #3dba6a;             /* 8,1:1 */
   --primary-foreground: #001229;
-  --secondary: #0d1c34;
+  --secondary: #0b182b;
   --secondary-foreground: #eef2f6;
-  --muted: #0d1c34;
-  --muted-foreground: #94a3b8;    /* 7,7:1 */
-  --accent: #0d1c34;
+  --muted: #0b182b;
+  --muted-foreground: #94a3b8;    /* 7,9:1 */
+  --accent: #0b182b;
   --accent-foreground: #5ba3e0;
   --destructive: #f0705f;
   --destructive-foreground: #001229;
-  --border: #1a2b45;
-  --input: #1a2b45;
+  --border: #172539;
+  --input: #172539;
   --ring: #3dba6a;
 
-  --chart-1: #318be6;
-  --chart-2: #0c994f;
-  --chart-3: #dc6294;
-  --chart-4: #ab7d0c;
-  --chart-5: #a577e3;
-  --chart-6: #179a8e;
-  --chart-7: #dd6f23;
-  --chart-grade: #1a2b45;
-  --chart-eixo: #2a3e5e;
+  --chart-1: #2996fd;
+  --chart-2: #08994e;
+  --chart-3: #ed5195;
+  --chart-4: #bd8a05;
+  --chart-5: #ac6ef8;
+  --chart-6: #09aa9d;
+  --chart-7: #e56c00;
+  --chart-grade: #172539;
+  --chart-eixo: #26364f;
   --chart-rotulo: #94a3b8;
   --sobe: #3dba6a;
   --desce: #f0705f;
