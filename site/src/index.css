@@ -209,3 +209,30 @@
 @media (prefers-reduced-motion: reduce) {
   .segmento { animation: none; }
 }
+
+/* Os minigráficos da página inicial: o traço se desenha da esquerda para a
+   direita, como os outros gráficos, e a bolinha do último ano aparece no fim. */
+.mini-traco {
+  stroke-dasharray: 1;
+  animation: mini-desenha 1000ms ease-out both;
+}
+.mini-area,
+.mini-fim {
+  animation: mini-aparece 400ms ease-out both;
+}
+.mini-area {
+  animation-duration: 1000ms;
+}
+@keyframes mini-desenha {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes mini-aparece {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mini-traco,
+  .mini-area,
+  .mini-fim { animation: none; }
+}

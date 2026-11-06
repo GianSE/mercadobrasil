@@ -17,4 +17,8 @@ export const fmt = {
   pontos: (v: number, casas = 1) =>
     `${v > 0 ? "+" : ""}${v.toLocaleString("pt-BR", { minimumFractionDigits: casas, maximumFractionDigits: casas })}%`,
   data: (d: Date) => d.toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" }),
+  /** 2.62 -> "×2,6" */
+  multiplo: (v: number) => `×${decimal.format(v)}`,
+  /** "agosto de 2026" ou "ago. de 2026"; em UTC, como as competências do CAGED */
+  mes: (d: Date, estilo: "long" | "short" = "long") => d.toLocaleDateString("pt-BR", { month: estilo, year: "numeric", timeZone: "UTC" }),
 };

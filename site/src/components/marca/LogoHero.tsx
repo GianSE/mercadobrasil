@@ -54,17 +54,17 @@ export function LogoHero({ className = "" }: { className?: string }) {
         <rect className="mbh-barra" x="463" y="224" width="52" height="348" rx="5" fill="url(#mbh-b3)" />
       </svg>
 
-      <div className="mbh-nome mt-6 text-center leading-none" aria-hidden="true">
-        <div className="text-2xl font-light uppercase tracking-[0.35em] text-foreground">Mercado</div>
-        <div className="mt-2 text-5xl font-bold uppercase tracking-[0.22em] text-[var(--mb-verde-claro)]">
+      <div className="mbh-nome mt-4 text-center leading-none" aria-hidden="true">
+        <div className="text-lg font-light uppercase tracking-[0.35em] text-foreground">Mercado</div>
+        <div className="mt-1.5 text-4xl font-bold uppercase tracking-[0.22em] text-[var(--mb-verde-claro)]">
           Brasil
         </div>
       </div>
 
-      <div className="mt-5 flex gap-2" aria-hidden="true">
-        <span className="mbh-traco h-1 w-12 rounded-full bg-[var(--mb-azul)]" />
-        <span className="mbh-traco h-1 w-12 rounded-full bg-[var(--mb-verde)]" />
-        <span className="mbh-traco h-1 w-12 rounded-full bg-[var(--mb-amarelo)]" />
+      <div className="mt-4 flex gap-1.5" aria-hidden="true">
+        <span className="mbh-traco h-1 w-9 rounded-full bg-[var(--mb-azul)]" />
+        <span className="mbh-traco h-1 w-9 rounded-full bg-[var(--mb-verde)]" />
+        <span className="mbh-traco h-1 w-9 rounded-full bg-[var(--mb-amarelo)]" />
       </div>
     </div>
   );
