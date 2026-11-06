@@ -201,11 +201,26 @@ export function opcaoBarrasH(
   t: Tinta,
   categorias: string[],
   valores: (number | null)[],
-  o: { formato?: Formato; formatoTooltip?: Formato; nome?: string; cor?: string; larguraRotulo?: number } = {},
+  o: {
+    formato?: Formato;
+    formatoTooltip?: Formato;
+    nome?: string;
+    cor?: string;
+    /** uma cor por barra, quando as categorias são entidades com cor própria (as subáreas) */
+    cores?: string[];
+    /** as categorias em destaque: elas na cor, as outras apagadas (ênfase) */
+    destaque?: string[];
+    /** a página trata o clique numa barra (mostra o cursor de mão) */
+    clicavel?: boolean;
+    larguraRotulo?: number;
+  } = {},
 ): EChartsCoreOption {
   const formato = o.formato ?? fmt.compacto;
   const formatoTooltip = o.formatoTooltip ?? formato;
-  const cor = o.cor ?? t.series[0];
+  const corBase = o.cor ?? t.series[0];
+  const apagada = misturar(t.rotulo, t.fundo, 0.55);
+  const comDestaque = !!o.destaque?.length;
+  const corDa = (i: number) => (comDestaque && !o.destaque!.includes(categorias[i]) ? apagada : (o.cores?.[i] ?? corBase));
   return {
     ...base(t),
     legend: { show: false },
@@ -214,8 +229,8 @@ export function opcaoBarrasH(
       ...(base(t).tooltip as object),
       trigger: "item",
       // O marcador padrão leria a cor do degradê; aqui vai a cor da série.
-      formatter: (p: { name: string; value: number }) =>
-        `<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:${cor}"></span><b>${p.name}</b></div><div style="margin-top:2px">${Number.isFinite(p.value) ? formatoTooltip(p.value) : "—"}</div>`,
+      formatter: (p: { name: string; value: number; dataIndex: number }) =>
+        `<div style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:2px;background:${corDa(p.dataIndex)}"></span><b>${p.name}</b></div><div style="margin-top:2px">${Number.isFinite(p.value) ? formatoTooltip(p.value) : "—"}</div>`,
     },
     xAxis: eixo(t, { type: "value", axisLabel: { show: false }, splitLine: { show: false } }),
     yAxis: eixo(t, {
@@ -229,53 +244,13 @@ export function opcaoBarrasH(
       {
         type: "bar",
         name: o.nome ?? "valor",
-        data: valores,
-        itemStyle: { color: degrade(cor, t.fundo, "direita"), borderRadius: [0, 4, 4, 0] },
+        data: valores.map((v, i) => ({ value: v, itemStyle: { color: degrade(corDa(i), t.fundo, "direita") } })),
+        itemStyle: { borderRadius: [0, 4, 4, 0] },
+        // O cursor de mão só quando a página trata o clique (ver Grafico.aoClicar).
+        cursor: o.clicavel ? "pointer" : "default",
         barMaxWidth: 20,
         animationDelay: cascata(valores.length),
         label: { show: true, position: "right", color: t.rotulo, formatter: (p: { value: number }) => formato(p.value) },
-      },
-    ],
-  };
-}
-
-/** Coroplético dos estados (precisa de useMapaBR pronto). Cor sequencial de um tom só. */
-export function opcaoMapa(t: Tinta, dados: { uf: string; valor: number | null }[], o: { formato?: Formato; nome: string }): EChartsCoreOption {
-  const formato = o.formato ?? fmt.compacto;
-  const valores = dados.map((d) => d.valor).filter((v): v is number => v !== null && Number.isFinite(v));
-  return {
-    ...base(t),
-    legend: { show: false },
-    tooltip: {
-      ...(base(t).tooltip as object),
-      trigger: "item",
-      formatter: (p: { name: string; value: number }) => `<b>${p.name}</b><br/>${o.nome}: ${Number.isFinite(p.value) ? formato(p.value) : "—"}`,
-    },
-    visualMap: {
-      min: valores.length ? Math.min(...valores) : 0,
-      max: valores.length ? Math.max(...valores) : 1,
-      calculable: false,
-      orient: "horizontal",
-      left: 0,
-      bottom: 0,
-      itemWidth: 10,
-      itemHeight: 140,
-      text: [formato(valores.length ? Math.max(...valores) : 1), formato(valores.length ? Math.min(...valores) : 0)],
-      textStyle: { color: t.rotulo },
-      inRange: { color: t.sequencial },
-    },
-    series: [
-      {
-        type: "map",
-        map: "BR",
-        nameProperty: "sigla",
-        roam: false,
-        // Sem o marcador que o ECharts põe no centro de cada estado.
-        showLegendSymbol: false,
-        data: dados.map((d) => ({ name: d.uf, value: d.valor })),
-        itemStyle: { borderColor: t.fundo, borderWidth: 1, areaColor: t.grade },
-        emphasis: { label: { show: false }, itemStyle: { areaColor: t.series[3] } },
-        select: { disabled: true },
       },
     ],
   };

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { BarraFiltros, FiltroPeriodo, SeletorUF } from "../../components/Filtros";
+import { BarraSegmentada } from "../../components/BarraSegmentada";
 import { Grafico } from "../../components/Grafico";
 import { Painel } from "../../components/Painel";
 import { Titulo } from "../../components/Titulo";
@@ -172,10 +173,11 @@ function Perfil({ area, periodo, anoRais }: { area: Area; periodo: Periodo; anoR
       ? `As mulheres eram ${fmt.parte(num(fem[0], "mulheres"))} dos vínculos de ${area.sigla} em ${num(fem[0], "ano")} e ${fmt.parte(num(fem.at(-1), "mulheres"))} em ${num(fem.at(-1), "ano")}.`
       : undefined;
 
-  const barras = (d: LinhaSQL[], rotulo: string) => {
-    const p = parte(d);
-    return <Grafico rotulo={rotulo} altura={240} opcao={(t) => opcaoBarrasH(t, rotulos(p, "nome"), coluna(p, "parte"), { formato: fmt.parte, larguraRotulo: 120 })} />;
-  };
+  // Como um todo se divide, em poucas partes: a barra segmentada, com a parte
+  // escrita em cada bloco onde cabe (skill dataviz: part-to-whole <= 6 partes).
+  const barras = (d: LinhaSQL[], rotulo: string) => (
+    <BarraSegmentada rotulo={rotulo} partes={d.map((l) => ({ nome: String(l.nome), valor: num(l, "admissoes") }))} formato={fmt.inteiro} />
+  );
   const tabela = (d: LinhaSQL[]) => ({
     colunas: [{ chave: "nome", rotulo: "Grupo" }, { chave: "admissoes", rotulo: "Admissões", formato: fmt.inteiro }, { chave: "parte", rotulo: "Parte", formato: fmt.parte }],
     linhas: parte(d),
@@ -185,10 +187,10 @@ function Perfil({ area, periodo, anoRais }: { area: Area; periodo: Periodo; anoR
     <section className="flex flex-col gap-4">
       <Titulo pergunta={`Quem trabalha em ${area.sigla}?`} resposta={resposta} />
       <div className="grid gap-4 lg:grid-cols-2">
-        <Painel titulo={`Admissões por sexo · ${f.rotulo}`} descricao={`CAGED · ${periodo[0]}–${periodo[1]}`} estado={sexo} altura={240} tabela={tabela}>
+        <Painel titulo={`Admissões por sexo · ${f.rotulo}`} descricao={`CAGED · ${periodo[0]}–${periodo[1]}`} estado={sexo} altura={120} tabela={tabela}>
           {(d) => barras(d, `Admissões em ${area.nome} por sexo`)}
         </Painel>
-        <Painel titulo={`Admissões por raça/cor · ${f.rotulo}`} descricao={`CAGED · ${periodo[0]}–${periodo[1]}`} estado={raca} altura={240} tabela={tabela}>
+        <Painel titulo={`Admissões por raça/cor · ${f.rotulo}`} descricao={`CAGED · ${periodo[0]}–${periodo[1]}`} estado={raca} altura={120} tabela={tabela}>
           {(d) => barras(d, `Admissões em ${area.nome} por raça/cor`)}
         </Painel>
       </div>

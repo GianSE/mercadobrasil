@@ -1,9 +1,11 @@
+import { useLocation } from "wouter";
 import { base, eixo, Grafico, Legenda } from "../../components/Grafico";
 import { Indicador } from "../../components/Indicador";
 import { Painel } from "../../components/Painel";
 import { AneisRecorte } from "../../components/Recorte";
 import type { Area as TipoArea } from "../../lib/areas";
 import { useTabela, type Linha } from "../../lib/dados";
+import { useFiltro } from "../../lib/filtro";
 import { fmt } from "../../lib/formato";
 import { areaDegrade, cascata, degrade, opcaoBarrasH } from "../../lib/graficos";
 import { estoqueAnual, LENTES, resumir, rotuloLente } from "../../lib/rais";
@@ -17,6 +19,14 @@ export function VisaoGeral({ area }: { area: TipoArea }) {
   const subareas = useTabela(area.repo, "rais_estoque_area", (l) => porSubarea(l, area));
   const ufs = useTabela(area.repo, "rais_estoque_uf", porUF);
   const mensal = useTabela(area.repo, "serie_mensal", saldoMensal);
+  const f = useFiltro();
+  const [, navegar] = useLocation();
+  // Os links levam junto os filtros do endereço (?uf=, ?periodo=).
+  const ir = (secao: string, extra: Record<string, string> = {}, ancora = "") => {
+    const params = new URLSearchParams(window.location.search);
+    for (const [k, v] of Object.entries(extra)) params.set(k, v);
+    navegar(`/${area.slug}/${secao}${params.size ? `?${params}` : ""}${ancora}`);
+  };
 
   return (
     <>
@@ -101,20 +111,37 @@ export function VisaoGeral({ area }: { area: TipoArea }) {
 
       <Painel
         titulo="Subáreas"
-        descricao={`Vínculos ativos de quem exerce ocupação de ${area.sigla}, último ano.`}
+        descricao={`Vínculos ativos de quem exerce ocupação de ${area.sigla}, último ano · clique para ver a subárea ano a ano`}
         estado={subareas}
         altura={300}
       >
-        {(d) => <BarrasHorizontais itens={d} rotulo={`Vínculos ativos por subárea de ${area.nome}`} />}
+        {(d) => (
+          <BarrasHorizontais
+            itens={d}
+            rotulo={`Vínculos ativos por subárea de ${area.nome}`}
+            // Cada subárea com a cor dela, a mesma dos anéis e das linhas da ficha.
+            coresDaPaleta
+            aoClicar={(nome) => ir("crescimento", { h: "cbo", no: `subarea:${nome}` }, "#ocupacao")}
+          />
+        )}
       </Painel>
 
       <Painel
         titulo="Estados com mais vínculos"
-        descricao="Os dez maiores, último ano, todas as lentes."
+        descricao="Os dez maiores, último ano, todas as lentes · clique para ver o estado no mapa"
         estado={ufs}
         altura={300}
       >
-        {(d) => <BarrasHorizontais itens={d.slice(0, 10)} rotulo={`Dez estados com mais vínculos de ${area.nome}`} />}
+        {(d) => (
+          <BarrasHorizontais
+            itens={d.slice(0, 10)}
+            rotulo={`Dez estados com mais vínculos de ${area.nome}`}
+            aoClicar={(uf) => {
+              f.definir([uf]);
+              ir("onde", { uf });
+            }}
+          />
+        )}
       </Painel>
 
       <div className="lg:col-span-2">
@@ -179,13 +206,22 @@ export function VisaoGeral({ area }: { area: TipoArea }) {
 
 type Item = { nome: string; valor: number };
 
-/** Ranking do maior para o menor, o mesmo das outras seções (lib/graficos.ts). */
-function BarrasHorizontais({ itens, rotulo }: { itens: Item[]; rotulo: string }) {
+/** Ranking do maior para o menor, o mesmo das outras seções (lib/graficos.ts), clicável. */
+function BarrasHorizontais({ itens, rotulo, coresDaPaleta, aoClicar }: { itens: Item[]; rotulo: string; coresDaPaleta?: boolean; aoClicar?: (nome: string) => void }) {
   return (
     <Grafico
       rotulo={rotulo}
       altura={300}
-      opcao={(t) => opcaoBarrasH(t, itens.map((i) => i.nome), itens.map((i) => i.valor), { formato: fmt.compacto, formatoTooltip: fmt.inteiro, larguraRotulo: 150 })}
+      aoClicar={aoClicar ? (p) => p.name && aoClicar(p.name) : undefined}
+      opcao={(t) =>
+        opcaoBarrasH(t, itens.map((i) => i.nome), itens.map((i) => i.valor), {
+          formato: fmt.compacto,
+          formatoTooltip: fmt.inteiro,
+          larguraRotulo: 150,
+          cores: coresDaPaleta ? itens.map((_, i) => t.series[i % t.series.length]) : undefined,
+          clicavel: !!aoClicar,
+        })
+      }
     />
   );
 }

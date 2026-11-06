@@ -8,9 +8,29 @@ import { Inicio } from "./paginas/Inicio";
 // A página de área traz o ECharts; a inicial não precisa dele.
 const Area = lazy(() => import("./paginas/Area").then((m) => ({ default: m.Area })));
 
+/**
+ * Cada página nova começa no topo; com âncora no endereço (#ocupacao), rola até
+ * ela. A seção chega carregada sob demanda, então a âncora é procurada por
+ * alguns instantes antes de desistir.
+ */
 function VoltaAoTopo() {
   const [local] = useLocation();
-  useEffect(() => window.scrollTo(0, 0), [local]);
+  useEffect(() => {
+    const ancora = window.location.hash.slice(1);
+    if (!ancora) {
+      window.scrollTo(0, 0);
+      return;
+    }
+    let tentativas = 0;
+    const procurar = window.setInterval(() => {
+      const alvo = document.getElementById(ancora);
+      if (alvo || ++tentativas > 30) {
+        window.clearInterval(procurar);
+        alvo?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 100);
+    return () => window.clearInterval(procurar);
+  }, [local]);
   return null;
 }
 

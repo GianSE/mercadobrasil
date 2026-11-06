@@ -92,7 +92,14 @@ function Previsao({ area }: { area: Area }) {
         altura={280}
         tabela={(d) => ({ colunas: [{ chave: "modelo", rotulo: "Modelo" }, { chave: "mae", rotulo: "Erro médio (vagas)", formato: fmt.inteiro }, { chave: "ganho", rotulo: "Ganho sobre a regra simples", formato: fmt.parte }], linhas: d })}
       >
-        {(d) => <Grafico rotulo="Ganho de cada modelo sobre a regra simples" altura={280} opcao={(t) => opcaoBarrasH(t, rotulos(d, "modelo"), coluna(d, "ganho"), { formato: fmt.parte, larguraRotulo: 140 })} />}
+        {(d) => (
+          <Grafico
+            rotulo="Ganho de cada modelo sobre a regra simples"
+            altura={280}
+            // O modelo que projeta em destaque; os outros, contexto (ênfase).
+            opcao={(t) => opcaoBarrasH(t, rotulos(d, "modelo"), coluna(d, "ganho"), { formato: fmt.parte, larguraRotulo: 140, destaque: fim ? [String(fim.modelo)] : [] })}
+          />
+        )}
       </Painel>
     </section>
   );

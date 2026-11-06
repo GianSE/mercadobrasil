@@ -1,5 +1,5 @@
-import { BarChart, LineChart, MapChart, ScatterChart, SunburstChart } from "echarts/charts";
-import { GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
+import { BarChart, LineChart, ScatterChart, SunburstChart } from "echarts/charts";
+import { GridComponent, LegendComponent, MarkLineComponent, TooltipComponent } from "echarts/components";
 import * as echarts from "echarts/core";
 import type { EChartsCoreOption } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -7,25 +7,10 @@ import { useEffect, useRef, useState } from "react";
 import { useTema } from "../lib/tema";
 
 echarts.use([
-  LineChart, BarChart, MapChart, ScatterChart, SunburstChart,
-  GridComponent, LegendComponent, MarkLineComponent, TooltipComponent, VisualMapComponent,
+  LineChart, BarChart, ScatterChart, SunburstChart,
+  GridComponent, LegendComponent, MarkLineComponent, TooltipComponent,
   CanvasRenderer,
 ]);
-
-// O contorno dos estados (site/public/geo/br_uf.json, do IBGE pelo site do
-// TCC): geometria fixa, não dado da gold. Baixado uma vez, só quando um mapa
-// aparece na tela.
-let mapaBR: Promise<void> | null = null;
-export function useMapaBR(): boolean {
-  const [pronto, setPronto] = useState(false);
-  useEffect(() => {
-    mapaBR ??= fetch("/geo/br_uf.json")
-      .then((r) => r.json())
-      .then((geo) => echarts.registerMap("BR", geo));
-    mapaBR.then(() => setPronto(true), () => {});
-  }, []);
-  return pronto;
-}
 
 /** As cores do gráfico, lidas das variáveis CSS do tema na hora de desenhar. */
 export type Tinta = {
@@ -43,7 +28,7 @@ export type Tinta = {
   desce: string;
 };
 
-function lerTinta(): Tinta {
+export function lerTinta(): Tinta {
   const css = getComputedStyle(document.documentElement);
   const v = (nome: string) => css.getPropertyValue(nome).trim();
   return {

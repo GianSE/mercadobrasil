@@ -42,6 +42,18 @@ export default defineConfig({
         clientsClaim: true,
         runtimeCaching: [
           {
+            // Os tiles do OpenStreetMap do mapa da seção Onde, só os que o mapa
+            // pede (nunca baixados em lote, como pede a política de uso do OSM)
+            // e por uma semana.
+            urlPattern: /^https:\/\/tile\.openstreetmap\.org\//,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "osm-tiles",
+              expiration: { maxEntries: 500, maxAgeSeconds: 7 * 24 * 3600, purgeOnQuotaError: true },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
             // As tabelas da gold, pelo commit de cada uma (ver lib/dados.ts):
             // o endereço muda quando a tabela muda, então o que está em cache
             // nunca fica velho.
