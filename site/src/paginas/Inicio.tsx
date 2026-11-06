@@ -2,7 +2,6 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 import { Variacao } from "../components/Indicador";
 import { LogoHero } from "../components/marca/LogoHero";
-import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Skeleton } from "../components/ui/skeleton";
 import { AREAS, iconeDa, type Area } from "../lib/areas";
@@ -66,7 +65,7 @@ function CartaoArea({ area }: { area: Area }) {
             )}
           </div>
           <div className="flex items-center justify-between">
-            <Badge>{area.subareas.length} subáreas</Badge>
+            <span className="text-xs text-muted-foreground">{area.subareas.length} subáreas</span>
             <span className="inline-flex items-center gap-1 text-sm font-medium">
               Ver área <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
             </span>

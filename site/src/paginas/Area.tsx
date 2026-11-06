@@ -1,8 +1,7 @@
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, ChevronDown, Clock, FlaskConical, LayoutDashboard, MapPin, TrendingUp } from "lucide-react";
 import { lazy, Suspense, useEffect, useState, type ComponentProps } from "react";
 import { Link, useLocation } from "wouter";
 import { Skeleton } from "../components/ui/skeleton";
-import { Badge } from "../components/ui/badge";
 import { acharArea, AREAS, iconeDa, type Area as TipoArea } from "../lib/areas";
 import { infoGold } from "../lib/dados";
 import { ProvedorFiltro } from "../lib/filtro";
@@ -15,18 +14,18 @@ const Onde = lazy(() => import("./area/Onde").then((m) => ({ default: m.Onde }))
 const Trabalho = lazy(() => import("./area/Trabalho").then((m) => ({ default: m.Trabalho })));
 const Modelos = lazy(() => import("./area/Modelos").then((m) => ({ default: m.Modelos })));
 
-/** As seções da área, na ordem das abas. `pronta: false` aparece desativada, como "em breve". */
+/** As seções da área, na ordem das abas. */
 const SECOES = [
-  { id: "", rotulo: "Visão geral", pronta: true },
-  { id: "crescimento", rotulo: "Crescimento", pronta: true },
-  { id: "onde", rotulo: "Onde", pronta: true },
-  { id: "trabalho", rotulo: "Trabalho", pronta: true },
-  { id: "modelos", rotulo: "Modelos", pronta: true },
+  { id: "", rotulo: "Visão geral", icone: LayoutDashboard },
+  { id: "crescimento", rotulo: "Crescimento", icone: TrendingUp },
+  { id: "onde", rotulo: "Onde", icone: MapPin },
+  { id: "trabalho", rotulo: "Trabalho", icone: BriefcaseBusiness },
+  { id: "modelos", rotulo: "Modelos", icone: FlaskConical },
 ] as const;
 
 export function Area({ slug, secao = "" }: { slug: string; secao?: string }) {
   const area = acharArea(slug);
-  const atual = SECOES.find((s) => s.id === secao && s.pronta);
+  const atual = SECOES.find((s) => s.id === secao);
   useEffect(() => {
     document.title = area ? `${area.nome}${atual?.id ? ` · ${atual.rotulo}` : ""} · Mercado Brasil` : "Mercado Brasil";
   }, [area, atual]);
@@ -54,64 +53,65 @@ function LayoutArea({ area, secao }: { area: TipoArea; secao: string }) {
     infoGold(area.repo).then((i) => setSemGold(i.tabelas.size === 0), () => {});
   }, [area.repo]);
   const caminho = (slug: string, id: string) => `/${slug}${id ? `/${id}` : ""}`;
+  const [, navegar] = useLocation();
 
   return (
     <ProvedorFiltro>
       <main className="mx-auto max-w-6xl px-4 pb-8">
-        <nav className="flex flex-wrap items-center gap-2 py-6" aria-label="Áreas">
-          <Link href="/" className="mr-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="size-4" aria-hidden /> Áreas
+        {/* Navegação secundária, discreta: voltar e trocar de área. */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-5 pb-5">
+          <Link href="/" className="inline-flex items-center gap-1.5 rounded-md text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50">
+            <ArrowLeft className="size-4" aria-hidden /> Todas as áreas
           </Link>
-          {AREAS.map((a) => (
-            <Link
-              key={a.slug}
-              href={caminho(a.slug, secao)}
-              aria-current={a.slug === area.slug ? "page" : undefined}
-              className={cn(
-                "rounded-full border px-3 py-1 text-sm transition-colors",
-                a.slug === area.slug ? "border-foreground bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {a.nome}
-            </Link>
-          ))}
-        </nav>
+          <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="sr-only sm:not-sr-only">Trocar de área</span>
+            <span className="relative">
+              <select
+                className="h-9 appearance-none rounded-md border bg-card pr-8 pl-3 text-sm font-medium text-foreground outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                value={area.slug}
+                onChange={(e) => navegar(caminho(e.target.value, secao))}
+              >
+                {AREAS.map((a) => (
+                  <option key={a.slug} value={a.slug}>
+                    {a.nome}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2" aria-hidden />
+            </span>
+          </label>
+        </div>
 
-        <header className="flex flex-col gap-4 pb-6 sm:flex-row sm:items-start">
-          <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-secondary">
-            <Icone className="size-6" aria-hidden />
+        {/* O que é a área: o maior peso da página. As subáreas são informação, e não controles: texto corrido. */}
+        <header className="flex items-start gap-4 pb-6">
+          <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
+            <Icone className="size-7" aria-hidden />
           </div>
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">{area.nome}</h1>
-            <p className="mt-1 max-w-2xl text-muted-foreground">{area.resumo}</p>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {area.subareas.map((s) => (
-                <Badge key={s}>{s}</Badge>
-              ))}
-            </div>
+          <div className="min-w-0">
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{area.nome}</h1>
+            <p className="mt-1 max-w-3xl text-muted-foreground">{area.resumo}</p>
+            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Subáreas:</span> {area.subareas.join("\u00a0· ")}
+            </p>
           </div>
         </header>
 
-        <nav className="mb-6 flex gap-1 overflow-x-auto border-b" aria-label="Seções">
-          {SECOES.map((s) =>
-            s.pronta ? (
-              <LinkComFiltros
-                key={s.id}
-                href={caminho(area.slug, s.id)}
-                aria-current={s.id === secao ? "page" : undefined}
-                className={cn(
-                  "-mb-px shrink-0 border-b-2 px-3 py-2 text-sm transition-colors",
-                  s.id === secao ? "border-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {s.rotulo}
-              </LinkComFiltros>
-            ) : (
-              <span key={s.id} className="shrink-0 cursor-default px-3 py-2 text-sm text-muted-foreground/60" title="Em breve">
-                {s.rotulo}
-              </span>
-            ),
-          )}
+        {/* As seções: a navegação principal da área, na largura toda, com cara de botão. */}
+        <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border bg-card p-1.5 shadow-xs" aria-label="Seções">
+          {SECOES.map((s) => (
+            <LinkComFiltros
+              key={s.id}
+              href={caminho(area.slug, s.id)}
+              aria-current={s.id === secao ? "page" : undefined}
+              className={cn(
+                "inline-flex min-w-fit flex-1 flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-[11px] font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:flex-row sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm",
+                s.id === secao ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              )}
+            >
+              <s.icone className="size-4 shrink-0" aria-hidden />
+              {s.rotulo}
+            </LinkComFiltros>
+          ))}
         </nav>
 
         {semGold && (

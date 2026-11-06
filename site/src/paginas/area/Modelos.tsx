@@ -9,7 +9,7 @@ import type { Area } from "../../lib/areas";
 import type { Estado } from "../../lib/dados";
 import { useConsulta, type LinhaSQL } from "../../lib/db";
 import { fmt } from "../../lib/formato";
-import { opcaoBarrasH, opcaoLinhas, opcaoPrevisao, opcaoRazaoChances } from "../../lib/graficos";
+import { opcaoLinhas, opcaoPrevisao, opcaoRazaoChances } from "../../lib/graficos";
 import { coluna, num, rotulos } from "../../lib/sql";
 
 /*
@@ -50,7 +50,6 @@ function Previsao({ area }: { area: Area }) {
   const q = (sql: string) => useConsulta(area.slug, area.repo, sql);
   const serie = q("SELECT strftime(mes, '%Y-%m') AS mes, saldo FROM serie_mensal ORDER BY mes DESC LIMIT 72");
   const prev = q("SELECT strftime(mes, '%Y-%m') AS mes, previsao, inferior, superior, acum_previsao, acum_inferior, acum_superior, modelo FROM previsao_saldo ORDER BY mes");
-  const placar = q(`SELECT modelo, mae, "ganho_vs_naive_%" / 100 AS ganho FROM previsao_placar ORDER BY mae`);
 
   // As duas consultas viram um estado só: o gráfico precisa das duas juntas.
   const juntos = useMemo<Estado<{ obs: LinhaSQL[]; p: LinhaSQL[] }>>(() => {
@@ -84,22 +83,6 @@ function Previsao({ area }: { area: Area }) {
           const superior = meses.map((_, i) => (i >= k ? num(d.p[i - k], "superior") : null));
           return <Grafico rotulo={`Saldo mensal observado e projetado de ${area.nome}`} altura={340} opcao={(t) => opcaoPrevisao(t, meses, observado, previsto, inferior, superior)} />;
         }}
-      </Painel>
-      <Painel
-        titulo="Por que este modelo, e não outro"
-        descricao="Quanto cada modelo erra a menos que repetir o saldo do mesmo mês do ano anterior, nos testes com o passado"
-        estado={placar}
-        altura={280}
-        tabela={(d) => ({ colunas: [{ chave: "modelo", rotulo: "Modelo" }, { chave: "mae", rotulo: "Erro médio (vagas)", formato: fmt.inteiro }, { chave: "ganho", rotulo: "Ganho sobre a regra simples", formato: fmt.parte }], linhas: d })}
-      >
-        {(d) => (
-          <Grafico
-            rotulo="Ganho de cada modelo sobre a regra simples"
-            altura={280}
-            // O modelo que projeta em destaque; os outros, contexto (ênfase).
-            opcao={(t) => opcaoBarrasH(t, rotulos(d, "modelo"), coluna(d, "ganho"), { formato: fmt.parte, larguraRotulo: 140, destaque: fim ? [String(fim.modelo)] : [] })}
-          />
-        )}
       </Painel>
     </section>
   );

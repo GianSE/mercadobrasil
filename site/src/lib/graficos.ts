@@ -317,15 +317,37 @@ export function opcaoRazaoChances(t: Tinta, itens: { rotulo: string; valor: numb
     xAxis: eixo(t, { type: "log", logBase: 2, axisLabel: { color: t.rotulo, formatter: (v: number) => `×${v.toLocaleString("pt-BR")}` } }),
     yAxis: eixo(t, { type: "category", data: itens.map((i) => i.rotulo), inverse: true, axisLine: { show: false }, splitLine: { show: false }, axisLabel: { color: t.texto, width: 260, overflow: "truncate" } }),
     series: [
+      // As hastes (gráfico de pirulito): do ×1, a referência, até o valor de
+      // cada característica, na cor do ponto. Numa série própria, por baixo
+      // dos pontos, para o ponto ficar sempre por cima da haste.
       {
         type: "scatter",
+        data: [],
+        silent: true,
+        z: 1,
+        markLine: {
+          silent: true,
+          symbol: "none",
+          animationDuration: 900,
+          label: { show: false },
+          data: [
+            { xAxis: 1, lineStyle: { color: t.eixo, type: "solid", width: 1 } },
+            ...itens.map((i, k) => [
+              { coord: [1, k], lineStyle: { color: i.p < 0.05 ? (i.valor >= 1 ? t.desce : t.sobe) : t.eixo, type: "solid", width: 2 } },
+              { coord: [i.valor, k] },
+            ]),
+          ],
+        },
+      },
+      {
+        type: "scatter",
+        z: 3,
         data: itens.map((i, k) => ({
           value: [i.valor, k],
           // Mais chance de sair em vermelho, menos em verde; vazado se não difere da referência.
-          itemStyle: i.p < 0.05 ? { color: i.valor >= 1 ? t.desce : t.sobe } : { color: t.fundo, borderColor: t.rotulo, borderWidth: 1.5 },
+          itemStyle: i.p < 0.05 ? { color: i.valor >= 1 ? t.desce : t.sobe, borderColor: t.fundo, borderWidth: 2 } : { color: t.fundo, borderColor: t.rotulo, borderWidth: 1.5 },
         })),
-        symbolSize: 10,
-        markLine: { silent: true, symbol: "none", data: [{ xAxis: 1 }], lineStyle: { color: t.rotulo, type: "dashed" }, label: { show: false } },
+        symbolSize: 11,
       },
     ],
   };
